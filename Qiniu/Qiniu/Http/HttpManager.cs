@@ -20,13 +20,12 @@ namespace Qiniu.Http
         private const string MULTIPART_SEP_LINE = "\r\n";
         private const int BUFFER_SIZE = 4096;//4KB
         private TimeSpan timeout;
-        public bool UseData { set; get; }
+        public PostFileType FileContentType{set;get;}
         public PostArgs PostArgs { set; get; }
         public WebHeaderCollection Headers { set; get; }
         public ProgressHandler ProgressHandler { set; get; }
         public CompletionHandler CompletionHandler { set; get; }
         private MemoryStream postDataMemoryStream;
-        private IPEndPoint remoteEndPoint;
         private double duration;
         private DateTime startTime;
         private string genId()
@@ -49,7 +48,7 @@ namespace Qiniu.Http
         public HttpManager()
         {
             this.timeout = new TimeSpan(0, 0, 0, Config.TIMEOUT_INTERVAL);
-            this.UseData = false;
+            this.FileContentType = PostFileType.FILE;
             this.Headers = new WebHeaderCollection();
         }
 
@@ -211,17 +210,29 @@ namespace Qiniu.Http
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             //write file data
-            if (UseData)
+            if (FileContentType==PostFileType.BYTES)
             {
                 postDataMemoryStream.Write(this.PostArgs.Data, 0, this.PostArgs.Data.Length);
             }
-            else
+            else if (FileContentType == PostFileType.FILE)
             {
                 using (FileStream fs = new FileStream(this.PostArgs.File, FileMode.Open, FileAccess.Read))
                 {
                     byte[] buffer = new byte[BUFFER_SIZE];
                     int numRead = -1;
                     while ((numRead = fs.Read(buffer, 0, buffer.Length)) != 0)
+                    {
+                        postDataMemoryStream.Write(buffer, 0, numRead);
+                    }
+                }
+            }
+            else if (FileContentType == PostFileType.STREAM)
+            {
+                using (this.PostArgs.Stream)
+                {
+                    byte[] buffer = new byte[BUFFER_SIZE];
+                    int numRead = -1;
+                    while ((numRead = this.PostArgs.Stream.Read(buffer, 0, buffer.Length)) != 0)
                     {
                         postDataMemoryStream.Write(buffer, 0, numRead);
                     }

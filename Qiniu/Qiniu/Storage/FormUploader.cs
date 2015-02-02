@@ -28,20 +28,32 @@ namespace Qiniu.Storage
             {
                 postArgs.Params.Add("crc32", new CRC32_Hsr().HashString(Encoding.UTF8.GetString(data, 0, data.Length)));
             }
-            httpManager.UseData = true;
+            httpManager.FileContentType = PostFileType.BYTES;
             upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
 
         public static void uploadStream(HttpManager httpManager, Stream stream, string key, string token,
             UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
-            long len = stream.Length;
-            byte[] buffer = new byte[len];
-            int cnt = stream.Read(buffer, 0, (int)len);
-            stream.Close();
-            byte[] data = new byte[cnt];
-            Array.Copy(buffer, data, cnt);
-            uploadData(httpManager, data, key, token, uploadOptions, upCompletionHandler);
+            PostArgs postArgs = new PostArgs();
+            postArgs.Stream = stream;
+            postArgs.Params = new Dictionary<string, string>();
+            if (key != null)
+            {
+                postArgs.FileName = key;
+            }
+            //set file crc32 check
+            if (uploadOptions != null && uploadOptions.CheckCrc32)
+            {
+                long streamLength = stream.Length;
+                byte[] buffer = new byte[streamLength];
+                int cnt=stream.Read(buffer, 0, (int)streamLength);
+                string streamContent=Encoding.UTF8.GetString(buffer,0,cnt);
+                postArgs.Params.Add("crc32", new CRC32_Hsr().HashString(streamContent));
+                postArgs.Stream.Seek(0, SeekOrigin.Begin);
+            }
+            httpManager.FileContentType = PostFileType.STREAM;
+            upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
 
         //以multipart/form-data方式上传文件，可以指定key，也可以设置为null
@@ -57,7 +69,7 @@ namespace Qiniu.Storage
             {
                 postArgs.Params.Add("crc32", new CRC32_Hsr().HashFile(filePath));
             }
-            httpManager.UseData = false;
+            httpManager.FileContentType = PostFileType.FILE;
             upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
 
