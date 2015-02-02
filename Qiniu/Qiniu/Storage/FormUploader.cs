@@ -22,11 +22,24 @@ namespace Qiniu.Storage
             //set file crc32 check
             if (uploadOptions != null && uploadOptions.CheckCrc32)
             {
-                postArgs.Params.Add("crc32", new CRC32_Hsr().HashString(Encoding.UTF8.GetString(data,0,data.Length)));
+                postArgs.Params.Add("crc32", new CRC32_Hsr().HashString(Encoding.UTF8.GetString(data, 0, data.Length)));
             }
             httpManager.UseData = true;
             upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
+
+        public static void uploadStream(HttpManager httpManager, Stream stream, string key, string token,
+            UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
+        {
+            long len = stream.Length;
+            byte[] buffer = new byte[len];
+            int cnt = stream.Read(buffer, 0, (int)len);
+            stream.Close();
+            byte[] data = new byte[cnt];
+            Array.Copy(buffer, data, cnt);
+            uploadData(httpManager, data, key, token, uploadOptions, upCompletionHandler);
+        }
+
         //以multipart/form-data方式上传文件，可以指定key，也可以设置为null
         public static void uploadFile(HttpManager httpManager, string filePath, string key,
             string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
@@ -47,7 +60,7 @@ namespace Qiniu.Storage
         private static void upload(HttpManager httpManager, PostArgs postArgs, string key, string token,
             UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
-           
+
             //set key
             if (!string.IsNullOrEmpty(key))
             {

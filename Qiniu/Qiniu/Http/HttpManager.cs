@@ -66,11 +66,18 @@ namespace Qiniu.Http
             this.webRequest.ContentType = APPLICATION_FORM_URLENCODED;
             //prepare data
             StringBuilder postParams = new StringBuilder();
-            foreach (KeyValuePair<string, string> kvp in this.PostArgs.Params)
+            if (this.PostArgs != null && this.PostArgs.Params != null)
             {
-                postParams.Append(HttpUtility.UrlEncode(kvp.Key)).Append("=").Append(HttpUtility.UrlEncode(kvp.Value)).Append("&");
+                foreach (KeyValuePair<string, string> kvp in this.PostArgs.Params)
+                {
+                    postParams.Append(HttpUtility.UrlEncode(kvp.Key)).Append("=").Append(HttpUtility.UrlEncode(kvp.Value)).Append("&");
+                }
             }
-            byte[] postData = Encoding.UTF8.GetBytes(postParams.ToString().Substring(0, postParams.Length - 1));
+            byte[] postData = new byte[0];
+            if (postParams.Length > 0)
+            {
+                postData = Encoding.UTF8.GetBytes(postParams.ToString().Substring(0, postParams.Length - 1));
+            }
             this.postDataMemoryStream = new MemoryStream(postData);
             //set content length
             this.webRequest.ContentLength = this.postDataMemoryStream.Length;
@@ -84,11 +91,14 @@ namespace Qiniu.Http
         private void firePostRequest(IAsyncResult asyncResult)
         {
             HttpWebRequest request = (HttpWebRequest)asyncResult.AsyncState;
-            Stream postStream = request.EndGetRequestStream(asyncResult);
-            postDataMemoryStream.CopyTo(postStream, (int)postDataMemoryStream.Length);
-            postDataMemoryStream.Close();
-            postStream.Flush();
-            postStream.Close();
+            if (postDataMemoryStream.Length > 0)
+            {
+                Stream postStream = request.EndGetRequestStream(asyncResult);
+                postDataMemoryStream.CopyTo(postStream, (int)postDataMemoryStream.Length);
+                postDataMemoryStream.Close();
+                postStream.Flush();
+                postStream.Close();
+            }
             request.BeginGetResponse(new AsyncCallback(handleResponse), request);
         }
 
@@ -158,22 +168,25 @@ namespace Qiniu.Http
             byte[] boundaryData = Encoding.UTF8.GetBytes(MULTIPART_BOUNDARY);
             byte[] multiPartSepLineData = Encoding.UTF8.GetBytes(MULTIPART_SEP_LINE);
 
-            foreach (KeyValuePair<string, string> kvp in this.PostArgs.Params)
+            if (this.PostArgs != null && this.PostArgs.Params != null)
             {
-                //write boundary start
-                postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
-                //write boundary
-                postDataMemoryStream.Write(boundaryData, 0, boundaryData.Length);
-                //wrtie header and content
-                postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
-                byte[] contentHeaderData = Encoding.UTF8.GetBytes(
-                    string.Format("Content-Disposition: form-data; name=\"{0}\"", kvp.Key));
-                postDataMemoryStream.Write(contentHeaderData, 0, contentHeaderData.Length);
-                postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
-                postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
-                byte[] contentData = Encoding.UTF8.GetBytes(kvp.Value);
-                postDataMemoryStream.Write(contentData, 0, contentData.Length);
-                postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
+                foreach (KeyValuePair<string, string> kvp in this.PostArgs.Params)
+                {
+                    //write boundary start
+                    postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
+                    //write boundary
+                    postDataMemoryStream.Write(boundaryData, 0, boundaryData.Length);
+                    //wrtie header and content
+                    postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
+                    byte[] contentHeaderData = Encoding.UTF8.GetBytes(
+                        string.Format("Content-Disposition: form-data; name=\"{0}\"", kvp.Key));
+                    postDataMemoryStream.Write(contentHeaderData, 0, contentHeaderData.Length);
+                    postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
+                    postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
+                    byte[] contentData = Encoding.UTF8.GetBytes(kvp.Value);
+                    postDataMemoryStream.Write(contentData, 0, contentData.Length);
+                    postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
+                }
             }
             //write filename and mimetype header
             postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
@@ -329,14 +342,14 @@ namespace Qiniu.Http
                             if (respData != null)
                             {
                                 Dictionary<string, string> respErrorDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(respData);
-                                if (respErrorDict.ContainsKey("error"))
+                                if (respErrorDict!=null && respErrorDict.ContainsKey("error"))
                                 {
                                     error = respErrorDict["error"];
                                 }
                             }
                             else
                             {
-                                error = "response null";
+                                error = "";
                             }
                         }
                     }
