@@ -8,6 +8,6 @@ namespace Qiniu.Http
 {
     public interface CompletionHandler
     {
-        void complete(ResponseInfo info, object response);
+        void complete(ResponseInfo info, string response);
     }
 }

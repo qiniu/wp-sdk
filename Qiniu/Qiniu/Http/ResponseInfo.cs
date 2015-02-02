@@ -16,7 +16,7 @@ namespace Qiniu.Http
         public int StatusCode { set; get; }
         public string ReqId { set; get; }
         public string Xlog { set; get; }
-        public string XVia { set; get; }
+        public string Xvia { set; get; }
         public string Error { set; get; }
         public double Duration { set; get; }
         public string Host { set; get; }
@@ -28,7 +28,7 @@ namespace Qiniu.Http
             this.StatusCode = statusCode;
             this.ReqId = reqId;
             this.Xlog = xlog;
-            this.XVia = xvia;
+            this.Xvia = xvia;
             this.Host = host;
             this.Ip = ip;
             this.Duration = duration;
@@ -82,7 +82,8 @@ namespace Qiniu.Http
 
         public string toString()
         {
-            return string.Format("", "");
+            return string.Format("{ResponseInfo:{0},status:{1}, reqId:{2}, xlog:{3}, xvia:{4},  host:{5}, ip:{6}, duration:{7} s, error:{8}}",
+                base.ToString(), StatusCode, ReqId, Xlog, Xvia, Host, Ip, Duration, Error);
         }
     }
 }

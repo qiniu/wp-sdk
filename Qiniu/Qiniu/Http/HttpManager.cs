@@ -5,6 +5,7 @@ using Qiniu.Common;
 using System.Net;
 using System.Threading;
 using System.IO;
+using Newtonsoft.Json;
 namespace Qiniu.Http
 {
     public class HttpManager
@@ -14,9 +15,8 @@ namespace Qiniu.Http
         private const string APPLICATION_OCTET_STREAM = "application/octet-stream";
         private const string APPLICATION_FORM_URLENCODED = "application/x-www-form-urlencoded";
         private const string APPLICATION_MULTIPART_FORM = "multipart/form-data";
-        private const string MULTIPART_BOUNDARY = "WindowsPhoneBoundaryjEdoki6WbQVQuakI";
-        private const string MULTIPART_BOUNDARY_START_TAG="--";
-        private const string MULTIPART_BOUNDARY_END_TAG = "--";
+        private const string MULTIPART_BOUNDARY = "-------WindowsPhoneBoundaryjEdoki6WbQVQuakI";
+        private const string MULTIPART_BOUNDARY_SEP_TAG = "--";
         private const string MULTIPART_SEP_LINE = "\r\n";
         private const int BUFFER_SIZE = 4096;//4KB
         private TimeSpan timeout;
@@ -26,6 +26,9 @@ namespace Qiniu.Http
         public ProgressHandler ProgressHandler { set; get; }
         public CompletionHandler CompletionHandler { set; get; }
         private MemoryStream postDataMemoryStream;
+        private IPEndPoint remoteEndPoint;
+        private double duration;
+        private DateTime startTime;
         private string genId()
         {
             Random r = new Random();
@@ -151,15 +154,14 @@ namespace Qiniu.Http
             //prepare data
             this.postDataMemoryStream = new MemoryStream();
             //write params
-            byte[] boundaryStartTag = Encoding.UTF8.GetBytes(MULTIPART_BOUNDARY_START_TAG);
-            byte[] boundaryEndTag = Encoding.UTF8.GetBytes(MULTIPART_BOUNDARY_END_TAG);
+            byte[] boundarySepTag = Encoding.UTF8.GetBytes(MULTIPART_BOUNDARY_SEP_TAG);
             byte[] boundaryData = Encoding.UTF8.GetBytes(MULTIPART_BOUNDARY);
             byte[] multiPartSepLineData = Encoding.UTF8.GetBytes(MULTIPART_SEP_LINE);
-            
+
             foreach (KeyValuePair<string, string> kvp in this.PostArgs.Params)
             {
                 //write boundary start
-                postDataMemoryStream.Write(boundaryStartTag, 0, boundaryStartTag.Length);
+                postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
                 //write boundary
                 postDataMemoryStream.Write(boundaryData, 0, boundaryData.Length);
                 //wrtie header and content
@@ -174,8 +176,7 @@ namespace Qiniu.Http
                 postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             }
             //write filename and mimetype header
-            //write boundary start and boundary
-            postDataMemoryStream.Write(boundaryStartTag, 0, boundaryStartTag.Length);
+            postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
             postDataMemoryStream.Write(boundaryData, 0, boundaryData.Length);
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             string fileName = this.PostArgs.FileName;
@@ -215,9 +216,9 @@ namespace Qiniu.Http
             }
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             //write last boundary
-            postDataMemoryStream.Write(boundaryStartTag, 0, boundaryStartTag.Length);
+            postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
             postDataMemoryStream.Write(boundaryData, 0, boundaryData.Length);
-            postDataMemoryStream.Write(boundaryEndTag, 0, boundaryEndTag.Length);
+            postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             postDataMemoryStream.Flush();
             this.webRequest.ContentLength = postDataMemoryStream.Length;
@@ -227,6 +228,7 @@ namespace Qiniu.Http
 
         private void fireMultipartPostRequest(IAsyncResult asyncResult)
         {
+            this.startTime = DateTime.Now;
             HttpWebRequest request = (HttpWebRequest)asyncResult.AsyncState;
             Stream postDataStream = request.EndGetRequestStream(asyncResult);
             //write to post data stream
@@ -240,7 +242,7 @@ namespace Qiniu.Http
             //reset to begin to read
             postDataMemoryStream.Seek(0, SeekOrigin.Begin);
             int memNumRead = 0;
-            byte[] memBuffer=new byte[BUFFER_SIZE];
+            byte[] memBuffer = new byte[BUFFER_SIZE];
             while ((memNumRead = postDataMemoryStream.Read(memBuffer, 0, memBuffer.Length)) != 0)
             {
                 postDataStream.Write(memBuffer, 0, memNumRead);
@@ -261,16 +263,94 @@ namespace Qiniu.Http
         {
             HttpWebRequest request = (HttpWebRequest)asyncResult.AsyncState;
             //check for exception
-            HttpWebResponse response = (HttpWebResponse)request.EndGetResponse(asyncResult);
+            int statusCode = ResponseInfo.NetworkError;
+            string reqId = null;
+            string xlog = null;
+            string ip = null;
+            string xvia = null;
+            string error = null;
+            string host = null;
+            string respData = null;
+            HttpWebResponse response = null;
+            try
+            {
+                response = (HttpWebResponse)request.EndGetResponse(asyncResult);
+            }
+            catch (WebException wex)
+            {
+                if (wex.Response != null)
+                {
+                    response = (HttpWebResponse)wex.Response;
+                }
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
 
-            StreamReader respStream = new StreamReader(response.GetResponseStream());
-            HttpStatusCode statusCode = response.StatusCode;
-            string respData = respStream.ReadToEnd();
-            bool isOk = statusCode == HttpStatusCode.OK;
-            Console.WriteLine(isOk);
-            //reset
-            respStream.Close();
-            response.Close();
+            if (response != null)
+            {
+                statusCode = (int)response.StatusCode;
+                if (response.Headers != null)
+                {
+                    WebHeaderCollection respHeaders = response.Headers;
+                    foreach (string headerName in respHeaders.AllKeys)
+                    {
+                        if (headerName.Equals("X-Reqid"))
+                        {
+                            reqId = respHeaders[headerName].ToString();
+                        }
+                        else if (headerName.Equals("X-Log"))
+                        {
+                            xlog = respHeaders[headerName].ToString();
+                        }
+                        else if (headerName.Equals("X-Via"))
+                        {
+                            xvia = respHeaders[headerName].ToString();
+                        }
+                        else if (headerName.Equals("X-Px"))
+                        {
+                            xvia = respHeaders[headerName].ToString();
+                        }
+                        else if (headerName.Equals("Fw-Via"))
+                        {
+                            xvia = respHeaders[headerName].ToString();
+                        }
+                        else if (headerName.Equals("Host"))
+                        {
+                            host = respHeaders[headerName].ToString();
+                        }
+                    }
+                    using (StreamReader respStream = new StreamReader(response.GetResponseStream()))
+                    {
+                        respData = respStream.ReadToEnd();
+                        if (statusCode != 200)
+                        {
+                            if (respData != null)
+                            {
+                                Dictionary<string, string> respErrorDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(respData);
+                                if (respErrorDict.ContainsKey("error"))
+                                {
+                                    error = respErrorDict["error"];
+                                }
+                            }
+                            else
+                            {
+                                error = "response null";
+                            }
+                        }
+                    }
+                    ip = webRequest.RequestUri.Authority;
+                    response.Close();
+                }
+            }
+
+            duration = DateTime.Now.Subtract(this.startTime).TotalSeconds;
+            ResponseInfo respInfo = new ResponseInfo(statusCode, reqId, xlog, xvia, host, ip, duration, error);
+            if (this.CompletionHandler != null)
+            {
+                this.CompletionHandler.complete(respInfo, respData);
+            }
             allDone.Set();
         }
     }

@@ -98,7 +98,7 @@ namespace Qiniu.Storage
 
             public void progress(int bytesWritten, int totalBytes)
             {
-
+                this.upProgressHandler.progress(bytesWritten, totalBytes);
             }
         }
 
@@ -110,9 +110,9 @@ namespace Qiniu.Storage
                 this.upCompletionHandler = upCompletionHandler;
             }
 
-            public void complete(ResponseInfo info, object response)
+            public void complete(ResponseInfo info, string response)
             {
-
+                upCompletionHandler.complete(info, response);
             }
         }
     }

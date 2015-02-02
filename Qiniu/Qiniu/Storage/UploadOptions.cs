@@ -31,14 +31,18 @@ namespace Qiniu.Storage
         //过滤掉所有非x:开头的扩展变量名词
         private Dictionary<string, string> filterParams(Dictionary<string, string> extraParamsToFilter)
         {
-            Dictionary<string, string> filtered = new Dictionary<string, string>();
-            foreach (KeyValuePair<string, string> kvp in extraParamsToFilter)
-            {
-                if (kvp.Key.StartsWith("x:"))
-                {
-                    filtered.Add(kvp.Key, kvp.Value);
-                }
-            }
+             Dictionary<string, string> filtered = new Dictionary<string, string>();
+             if (extraParamsToFilter != null)
+             {
+
+                 foreach (KeyValuePair<string, string> kvp in extraParamsToFilter)
+                 {
+                     if (kvp.Key.StartsWith("x:"))
+                     {
+                         filtered.Add(kvp.Key, kvp.Value);
+                     }
+                 }
+             }
             return filtered;
         }
     }
