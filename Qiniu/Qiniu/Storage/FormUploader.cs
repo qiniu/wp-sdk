@@ -19,6 +19,10 @@ namespace Qiniu.Storage
             PostArgs postArgs = new PostArgs();
             postArgs.Data = data;
             postArgs.Params = new Dictionary<string, string>();
+            if (key != null)
+            {
+                postArgs.FileName = key;
+            }
             //set file crc32 check
             if (uploadOptions != null && uploadOptions.CheckCrc32)
             {
