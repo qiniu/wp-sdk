@@ -233,11 +233,22 @@ namespace Qiniu.Http
             {
                 using (this.PostArgs.Stream)
                 {
-                    byte[] buffer = new byte[BUFFER_SIZE];
-                    int numRead = -1;
-                    while ((numRead = this.PostArgs.Stream.Read(buffer, 0, buffer.Length)) != 0)
+                    try
                     {
-                        postDataMemoryStream.Write(buffer, 0, numRead);
+                        byte[] buffer = new byte[BUFFER_SIZE];
+                        int numRead = -1;
+                        while ((numRead = this.PostArgs.Stream.Read(buffer, 0, buffer.Length)) != 0)
+                        {
+                            postDataMemoryStream.Write(buffer, 0, numRead);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (this.CompletionCallback != null)
+                        {
+                            this.CompletionCallback(ResponseInfo.fileError(ex), "");
+                        }
+                        return;
                     }
                 }
             }
