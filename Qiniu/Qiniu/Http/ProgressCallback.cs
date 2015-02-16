@@ -7,8 +7,5 @@ using System.Threading.Tasks;
 
 namespace Qiniu.Http
 {
-    public interface ProgressHandler
-    {
-        void progress(int bytesWritten, int totalBytes);
-    }
+    public delegate void ProgressCallback(int bytesWritten, int totalBytes);
 }

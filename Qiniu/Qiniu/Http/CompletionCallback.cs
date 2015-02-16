@@ -4,9 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Qiniu.Storage
+namespace Qiniu.Http
 {
-    public class UpCancellationSignal
-    {
-    }
+    public delegate void CompletionCallback(ResponseInfo info, string response);
 }

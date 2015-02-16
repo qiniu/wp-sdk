@@ -6,8 +6,7 @@ using System.Threading.Tasks;
 
 namespace Qiniu.Storage
 {
-    public abstract class UpProgressHandler
+    public class ResumeUploader
     {
-        public abstract void progress(int bytesWritten, int totalBytes);
     }
 }

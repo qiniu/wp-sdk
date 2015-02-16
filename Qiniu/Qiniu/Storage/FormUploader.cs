@@ -1,20 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
-using System.Net;
 using Qiniu.Http;
-using DBTek.Crypto;
 using Qiniu.Common;
+using Qiniu.Util;
 
 namespace Qiniu.Storage
 {
     public class FormUploader
     {
         public static void uploadData(HttpManager httpManager, byte[] data, string key,
-            string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
+            string token, UploadOptions uploadOptions, CompletionCallback completionCallback)
         {
             PostArgs postArgs = new PostArgs();
             postArgs.Data = data;
@@ -26,14 +22,14 @@ namespace Qiniu.Storage
             //set file crc32 check
             if (uploadOptions != null && uploadOptions.CheckCrc32)
             {
-                postArgs.Params.Add("crc32", new CRC32_Hsr().HashString(Encoding.UTF8.GetString(data, 0, data.Length)));
+                postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumBytes(data, data.Length)));
             }
             httpManager.FileContentType = PostFileType.BYTES;
-            upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
+            upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
         }
 
         public static void uploadStream(HttpManager httpManager, Stream stream, string key, string token,
-            UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
+            UploadOptions uploadOptions, CompletionCallback completionCallback)
         {
             PostArgs postArgs = new PostArgs();
             postArgs.Stream = stream;
@@ -47,18 +43,17 @@ namespace Qiniu.Storage
             {
                 long streamLength = stream.Length;
                 byte[] buffer = new byte[streamLength];
-                int cnt=stream.Read(buffer, 0, (int)streamLength);
-                string streamContent=Encoding.UTF8.GetString(buffer,0,cnt);
-                postArgs.Params.Add("crc32", new CRC32_Hsr().HashString(streamContent));
+                int cnt = stream.Read(buffer, 0, (int)streamLength);
+                postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumBytes(buffer, cnt)));
                 postArgs.Stream.Seek(0, SeekOrigin.Begin);
             }
             httpManager.FileContentType = PostFileType.STREAM;
-            upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
+            upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
         }
 
         //以multipart/form-data方式上传文件，可以指定key，也可以设置为null
         public static void uploadFile(HttpManager httpManager, string filePath, string key,
-            string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
+            string token, UploadOptions uploadOptions, CompletionCallback completionCallback)
         {
             PostArgs postArgs = new PostArgs();
             postArgs.File = filePath;
@@ -67,16 +62,15 @@ namespace Qiniu.Storage
             //set file crc32 check
             if (uploadOptions != null && uploadOptions.CheckCrc32)
             {
-                postArgs.Params.Add("crc32", new CRC32_Hsr().HashFile(filePath));
+                postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumFile(filePath)));
             }
             httpManager.FileContentType = PostFileType.FILE;
-            upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
+            upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
         }
 
         private static void upload(HttpManager httpManager, PostArgs postArgs, string key, string token,
-            UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
+            UploadOptions uploadOptions, CompletionCallback completionCallback)
         {
-
             //set key
             if (!string.IsNullOrEmpty(key))
             {
@@ -99,50 +93,15 @@ namespace Qiniu.Storage
                     postArgs.Params.Add(kvp.Key, kvp.Value);
                 }
             }
-            //set upload progress handler and completion handler
-            ProgressHandler progressHandler = null;
-            CompletionHandler completionHandler = null;
-            if (uploadOptions != null && uploadOptions.UpProgressHandler != null)
+            //set progress callback and cancellation callback
+            if (uploadOptions != null)
             {
-                progressHandler = new FormProgressHandler(uploadOptions.UpProgressHandler);
+                httpManager.ProgressCallback = uploadOptions.ProgressCallback;
+                httpManager.CancellationCallback = uploadOptions.CancellationCallback;
             }
-            if (upCompletionHandler != null)
-            {
-                completionHandler = new FormCompletionHandler(upCompletionHandler);
-            }
-            //set http manager
-            httpManager.ProgressHandler = progressHandler;
-            httpManager.CompletionHandler = completionHandler;
+            httpManager.CompletionCallback = completionCallback;
             httpManager.PostArgs = postArgs;
             httpManager.multipartPost(Config.UPLOAD_HOST);
-        }
-
-        class FormProgressHandler : ProgressHandler
-        {
-            public UpProgressHandler upProgressHandler;
-            public FormProgressHandler(UpProgressHandler upProgressHandler)
-            {
-                this.upProgressHandler = upProgressHandler;
-            }
-
-            public void progress(int bytesWritten, int totalBytes)
-            {
-                this.upProgressHandler.progress(bytesWritten, totalBytes);
-            }
-        }
-
-        class FormCompletionHandler : CompletionHandler
-        {
-            private UpCompletionHandler upCompletionHandler;
-            public FormCompletionHandler(UpCompletionHandler upCompletionHandler)
-            {
-                this.upCompletionHandler = upCompletionHandler;
-            }
-
-            public void complete(ResponseInfo info, string response)
-            {
-                upCompletionHandler.complete(info, response);
-            }
         }
     }
 }

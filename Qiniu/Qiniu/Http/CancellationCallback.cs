@@ -6,8 +6,5 @@ using System.Threading.Tasks;
 
 namespace Qiniu.Http
 {
-    public interface CompletionHandler
-    {
-        void complete(ResponseInfo info, string response);
-    }
+    public delegate bool CancellationCallback();
 }

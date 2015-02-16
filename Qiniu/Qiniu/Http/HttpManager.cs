@@ -20,11 +20,12 @@ namespace Qiniu.Http
         private const string MULTIPART_SEP_LINE = "\r\n";
         private const int BUFFER_SIZE = 4096;//4KB
         private TimeSpan timeout;
-        public PostFileType FileContentType{set;get;}
+        public PostFileType FileContentType { set; get; }
         public PostArgs PostArgs { set; get; }
         public WebHeaderCollection Headers { set; get; }
-        public ProgressHandler ProgressHandler { set; get; }
-        public CompletionHandler CompletionHandler { set; get; }
+        public ProgressCallback ProgressCallback { set; get; }
+        public CompletionCallback CompletionCallback { set; get; }
+        public CancellationCallback CancellationCallback { set; get; }
         private MemoryStream postDataMemoryStream;
         private double duration;
         private DateTime startTime;
@@ -52,6 +53,11 @@ namespace Qiniu.Http
             this.Headers = new WebHeaderCollection();
         }
 
+        public void setAuthHeader(string upToken)
+        {
+            this.Headers[HttpRequestHeader.Authorization] = upToken;
+        }
+
         /**
          * 以POST方式发送form-urlencoded请求
          */
@@ -60,7 +66,6 @@ namespace Qiniu.Http
             this.webRequest = (HttpWebRequest)WebRequest.CreateHttp(url);
             this.webRequest.UserAgent = this.getUserAgent();
             this.webRequest.AllowAutoRedirect = false;
-            this.webRequest.Headers = Headers;
             this.webRequest.Method = "POST";
             this.webRequest.ContentType = APPLICATION_FORM_URLENCODED;
             //prepare data
@@ -109,7 +114,6 @@ namespace Qiniu.Http
             this.webRequest = (HttpWebRequest)WebRequest.CreateHttp(url);
             this.webRequest.UserAgent = this.getUserAgent();
             this.webRequest.AllowAutoRedirect = false;
-            this.webRequest.Headers = Headers;
             this.webRequest.Method = "POST";
             this.webRequest.ContentType = APPLICATION_OCTET_STREAM;
             this.webRequest.BeginGetRequestStream(new AsyncCallback(firePostDataRequest), webRequest);
@@ -130,6 +134,16 @@ namespace Qiniu.Http
             }
             for (int i = 0; i < writeTimes; i++)
             {
+                //check cancellation signal
+                if (CancellationCallback != null && CancellationCallback())
+                {
+                    if (CompletionCallback != null)
+                    {
+                        CompletionCallback(ResponseInfo.cancelled(), "");
+                    }
+                    postDataStream.Close();
+                    return;
+                }
                 int offset = i * BUFFER_SIZE;
                 int size = BUFFER_SIZE;
                 if (i == writeTimes - 1)
@@ -138,9 +152,9 @@ namespace Qiniu.Http
                 }
                 postDataStream.Write(this.PostArgs.Data, offset, size);
                 bytesWritten += size;
-                if (ProgressHandler != null)
+                if (ProgressCallback != null)
                 {
-                    ProgressHandler.progress(bytesWritten, totalBytes);
+                    ProgressCallback(bytesWritten, totalBytes);
                 }
             }
             postDataStream.Flush();
@@ -157,7 +171,6 @@ namespace Qiniu.Http
             this.webRequest = (HttpWebRequest)WebRequest.CreateHttp(url);
             this.webRequest.UserAgent = this.getUserAgent();
             this.webRequest.AllowAutoRedirect = false;
-            this.webRequest.Headers = Headers;
             this.webRequest.Method = "POST";
             this.webRequest.ContentType = string.Format("{0}; boundary={1}", APPLICATION_MULTIPART_FORM, MULTIPART_BOUNDARY);
             //prepare data
@@ -210,7 +223,7 @@ namespace Qiniu.Http
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             //write file data
-            if (FileContentType==PostFileType.BYTES)
+            if (FileContentType == PostFileType.BYTES)
             {
                 postDataMemoryStream.Write(this.PostArgs.Data, 0, this.PostArgs.Data.Length);
             }
@@ -269,11 +282,21 @@ namespace Qiniu.Http
             byte[] memBuffer = new byte[BUFFER_SIZE];
             while ((memNumRead = postDataMemoryStream.Read(memBuffer, 0, memBuffer.Length)) != 0)
             {
+                //check cancellation signal
+                if (this.CancellationCallback!=null && this.CancellationCallback())
+                {
+                    if (this.CompletionCallback != null)
+                    {
+                        this.CompletionCallback(ResponseInfo.cancelled(), "");
+                    }
+                    postDataStream.Close();
+                    return;
+                }
                 postDataStream.Write(memBuffer, 0, memNumRead);
                 bytesWritten += memNumRead;
-                if (ProgressHandler != null)
+                if (ProgressCallback != null)
                 {
-                    ProgressHandler.progress(bytesWritten, totalBytes);
+                    ProgressCallback(bytesWritten, totalBytes);
                 }
             }
             //flush and close
@@ -352,10 +375,17 @@ namespace Qiniu.Http
                         {
                             if (respData != null)
                             {
-                                Dictionary<string, string> respErrorDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(respData);
-                                if (respErrorDict!=null && respErrorDict.ContainsKey("error"))
+                                try
                                 {
-                                    error = respErrorDict["error"];
+                                    Dictionary<string, string> respErrorDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(respData);
+                                    if (respErrorDict != null && respErrorDict.ContainsKey("error"))
+                                    {
+                                        error = respErrorDict["error"];
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    error = respData;
                                 }
                             }
                             else
@@ -371,9 +401,9 @@ namespace Qiniu.Http
 
             duration = DateTime.Now.Subtract(this.startTime).TotalSeconds;
             ResponseInfo respInfo = new ResponseInfo(statusCode, reqId, xlog, xvia, host, ip, duration, error);
-            if (this.CompletionHandler != null)
+            if (this.CompletionCallback != null)
             {
-                this.CompletionHandler.complete(respInfo, respData);
+                this.CompletionCallback(respInfo, respData);
             }
             allDone.Set();
         }

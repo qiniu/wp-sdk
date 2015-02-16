@@ -80,10 +80,17 @@ namespace Qiniu.Http
             return isNetworkBroken() || isServerError() || StatusCode == 406  ||(StatusCode==200 && Error!=null);
         }
 
-        public string toString()
+        private string toStr(string val)
         {
-            return string.Format("{ResponseInfo:{0},status:{1}, reqId:{2}, xlog:{3}, xvia:{4},  host:{5}, ip:{6}, duration:{7} s, error:{8}}",
-                base.ToString(), StatusCode, ReqId, Xlog, Xvia, Host, Ip, Duration, Error);
+            return (val == null) ? "null" : val;
         }
+
+        public override string ToString()
+        {
+            return string.Format("ResponseInfo: status:{0}, reqId:{1}, xlog:{2}, xvia:{3}, host:{4}, ip:{5}, duration:{6} s, error:{7}",
+                 StatusCode, toStr(ReqId), toStr(Xlog), toStr(Xvia), toStr(Host), toStr(Ip), Duration, toStr(Error));
+        }
+
+
     }
 }
