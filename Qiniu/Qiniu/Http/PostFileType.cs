@@ -8,6 +8,6 @@ namespace Qiniu.Http
 {
     public enum PostFileType
     {
-        BYTES, STREAM, FILE,
+        BYTES, STREAM,
     }
 }

@@ -49,7 +49,7 @@ namespace Qiniu.Http
         public HttpManager()
         {
             this.timeout = new TimeSpan(0, 0, 0, Config.TIMEOUT_INTERVAL);
-            this.FileContentType = PostFileType.FILE;
+            this.FileContentType = PostFileType.STREAM;
             this.Headers = new WebHeaderCollection();
         }
 
@@ -229,18 +229,6 @@ namespace Qiniu.Http
             {
                 postDataMemoryStream.Write(this.PostArgs.Data, 0, this.PostArgs.Data.Length);
             }
-            else if (FileContentType == PostFileType.FILE)
-            {
-                using (FileStream fs = new FileStream(this.PostArgs.File, FileMode.Open, FileAccess.Read))
-                {
-                    byte[] buffer = new byte[BUFFER_SIZE];
-                    int numRead = -1;
-                    while ((numRead = fs.Read(buffer, 0, buffer.Length)) != 0)
-                    {
-                        postDataMemoryStream.Write(buffer, 0, numRead);
-                    }
-                }
-            }
             else if (FileContentType == PostFileType.STREAM)
             {
                 using (this.PostArgs.Stream)
@@ -285,7 +273,7 @@ namespace Qiniu.Http
             while ((memNumRead = postDataMemoryStream.Read(memBuffer, 0, memBuffer.Length)) != 0)
             {
                 //check cancellation signal
-                if (this.CancellationCallback!=null && this.CancellationCallback())
+                if (this.CancellationCallback != null && this.CancellationCallback())
                 {
                     if (this.CompletionCallback != null)
                     {

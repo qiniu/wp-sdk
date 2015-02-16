@@ -50,24 +50,7 @@ namespace Qiniu.Storage
             httpManager.FileContentType = PostFileType.STREAM;
             upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
         }
-
-        //以multipart/form-data方式上传文件，可以指定key，也可以设置为null
-        public static void uploadFile(HttpManager httpManager, string filePath, string key,
-            string token, UploadOptions uploadOptions, CompletionCallback completionCallback)
-        {
-            PostArgs postArgs = new PostArgs();
-            postArgs.File = filePath;
-            postArgs.FileName = Path.GetFileName(filePath);
-            postArgs.Params = new Dictionary<string, string>();
-            //set file crc32 check
-            if (uploadOptions != null && uploadOptions.CheckCrc32)
-            {
-                postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumFile(filePath)));
-            }
-            httpManager.FileContentType = PostFileType.FILE;
-            upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
-        }
-
+ 
         private static void upload(HttpManager httpManager, PostArgs postArgs, string key, string token,
             UploadOptions uploadOptions, CompletionCallback completionCallback)
         {

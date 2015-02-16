@@ -93,6 +93,7 @@
     <Compile Include="Http\HttpManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Storage\FormUploader.cs" />
+    <Compile Include="Storage\ResumableUploader.cs" />
     <Compile Include="Storage\ResumeUploader.cs" />
     <Compile Include="Storage\UploadOptions.cs" />
     <Compile Include="Util\CRC32.cs" />
