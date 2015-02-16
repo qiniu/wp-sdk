@@ -94,6 +94,7 @@ namespace Qiniu.Http
 
         private void firePostRequest(IAsyncResult asyncResult)
         {
+            this.startTime = DateTime.Now;
             HttpWebRequest request = (HttpWebRequest)asyncResult.AsyncState;
             if (postDataMemoryStream.Length > 0)
             {
@@ -122,6 +123,7 @@ namespace Qiniu.Http
 
         private void firePostDataRequest(IAsyncResult asyncResult)
         {
+            this.startTime = DateTime.Now;
             HttpWebRequest request = (HttpWebRequest)asyncResult.AsyncState;
             Stream postDataStream = request.EndGetRequestStream(asyncResult);
 
