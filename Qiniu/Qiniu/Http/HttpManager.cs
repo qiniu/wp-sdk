@@ -231,25 +231,22 @@ namespace Qiniu.Http
             }
             else if (FileContentType == PostFileType.STREAM)
             {
-                using (this.PostArgs.Stream)
+                try
                 {
-                    try
+                    byte[] buffer = new byte[BUFFER_SIZE];
+                    int numRead = -1;
+                    while ((numRead = this.PostArgs.Stream.Read(buffer, 0, buffer.Length)) != 0)
                     {
-                        byte[] buffer = new byte[BUFFER_SIZE];
-                        int numRead = -1;
-                        while ((numRead = this.PostArgs.Stream.Read(buffer, 0, buffer.Length)) != 0)
-                        {
-                            postDataMemoryStream.Write(buffer, 0, numRead);
-                        }
+                        postDataMemoryStream.Write(buffer, 0, numRead);
                     }
-                    catch (Exception ex)
+                }
+                catch (Exception ex)
+                {
+                    if (this.CompletionCallback != null)
                     {
-                        if (this.CompletionCallback != null)
-                        {
-                            this.CompletionCallback(ResponseInfo.fileError(ex), "");
-                        }
-                        return;
+                        this.CompletionCallback(ResponseInfo.fileError(ex), "");
                     }
+                    return;
                 }
             }
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
@@ -372,28 +369,26 @@ namespace Qiniu.Http
                     using (StreamReader respStream = new StreamReader(response.GetResponseStream()))
                     {
                         respData = respStream.ReadToEnd();
-                        if (statusCode != 200)
+                        if (respData != null)
                         {
-                            if (respData != null)
+                            try
                             {
-                                try
+                                Dictionary<string, string> respErrorDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(respData);
+                                if (respErrorDict != null && respErrorDict.ContainsKey("error"))
                                 {
-                                    Dictionary<string, string> respErrorDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(respData);
-                                    if (respErrorDict != null && respErrorDict.ContainsKey("error"))
-                                    {
-                                        error = respErrorDict["error"];
-                                    }
-                                }
-                                catch (Exception)
-                                {
-                                    error = respData;
+                                    error = respErrorDict["error"];
                                 }
                             }
-                            else
+                            catch (Exception)
                             {
-                                error = "";
+                                error = respData;
                             }
                         }
+                        else
+                        {
+                            error = "no response";
+                        }
+
                     }
                     ip = webRequest.RequestUri.Authority;
                     response.Close();

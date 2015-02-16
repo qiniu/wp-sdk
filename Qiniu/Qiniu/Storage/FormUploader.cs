@@ -82,8 +82,42 @@ namespace Qiniu.Storage
                 httpManager.ProgressCallback = uploadOptions.ProgressCallback;
                 httpManager.CancellationCallback = uploadOptions.CancellationCallback;
             }
-            httpManager.CompletionCallback = completionCallback;
+            
             httpManager.PostArgs = postArgs;
+            //retry once if first time failed
+            httpManager.CompletionCallback = new CompletionCallback(delegate(ResponseInfo respInfo,string response){
+                if (respInfo.isOk())
+                {
+                    if (httpManager.PostArgs.Stream != null)
+                    {
+                        httpManager.PostArgs.Stream.Close();
+                    }
+                    if (completionCallback != null)
+                    {
+                        completionCallback(respInfo, response);
+                    }
+                    return;
+                }
+                else if(respInfo.needRetry())
+                {
+                    if (httpManager.PostArgs.Stream != null)
+                    {
+                        httpManager.PostArgs.Stream.Seek(0, SeekOrigin.Begin);
+                    }
+                    CompletionCallback retried = new CompletionCallback(delegate(ResponseInfo retryRespInfo,string retryResponse){
+                        if (httpManager.PostArgs.Stream != null)
+                        {
+                            httpManager.PostArgs.Stream.Close();
+                        }
+                        if (completionCallback != null)
+                        {
+                            completionCallback(retryRespInfo, retryResponse);
+                        }
+                    });
+                    httpManager.CompletionCallback = retried;
+                    httpManager.multipartPost(Config.UP_HOST);
+                }
+            });
             httpManager.multipartPost(Config.UPLOAD_HOST);
         }
     }

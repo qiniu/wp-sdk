@@ -17,8 +17,6 @@ namespace Qiniu.Http
         public byte[] Data { set; get; }
         // 上传的文件流
         public Stream Stream { set; get; }
-        //上传的文件
-        public string File { set; get; }
         //请求参数
         public Dictionary<string, string> Params { set; get; }
         //上传数据或文件的原始名称
@@ -31,7 +29,6 @@ namespace Qiniu.Http
             this.Params = new Dictionary<string, string>();
             this.Data = null;
             this.Stream = null;
-            this.File = null;
             this.FileName = null;
             this.MimeType = null;
         }
