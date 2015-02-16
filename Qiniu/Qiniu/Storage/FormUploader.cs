@@ -9,7 +9,7 @@ namespace Qiniu.Storage
 {
     public class FormUploader
     {
-        public static void uploadData(HttpManager httpManager, byte[] data, string key,
+        public void uploadData(HttpManager httpManager, byte[] data, string key,
             string token, UploadOptions uploadOptions, CompletionCallback completionCallback)
         {
             PostArgs postArgs = new PostArgs();
@@ -28,7 +28,7 @@ namespace Qiniu.Storage
             upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
         }
 
-        public static void uploadStream(HttpManager httpManager, Stream stream, string key, string token,
+        public void uploadStream(HttpManager httpManager, Stream stream, string key, string token,
             UploadOptions uploadOptions, CompletionCallback completionCallback)
         {
             PostArgs postArgs = new PostArgs();
@@ -51,7 +51,7 @@ namespace Qiniu.Storage
             upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
         }
  
-        private static void upload(HttpManager httpManager, PostArgs postArgs, string key, string token,
+        private void upload(HttpManager httpManager, PostArgs postArgs, string key, string token,
             UploadOptions uploadOptions, CompletionCallback completionCallback)
         {
             //set key
