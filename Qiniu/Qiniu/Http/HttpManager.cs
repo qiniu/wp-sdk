@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading;
 using System.IO;
 using Newtonsoft.Json;
+using System.IO.IsolatedStorage;
 namespace Qiniu.Http
 {
     public class HttpManager
@@ -20,7 +21,7 @@ namespace Qiniu.Http
         private const string MULTIPART_SEP_LINE = "\r\n";
         private const int BUFFER_SIZE = 4096;//4KB
         private TimeSpan timeout;
-        public PostFileType FileContentType { set; get; }
+        public PostContentType FileContentType { set; get; }
         public PostArgs PostArgs { set; get; }
         public WebHeaderCollection Headers { set; get; }
         public ProgressCallback ProgressCallback { set; get; }
@@ -49,7 +50,7 @@ namespace Qiniu.Http
         public HttpManager()
         {
             this.timeout = new TimeSpan(0, 0, 0, Config.TIMEOUT_INTERVAL);
-            this.FileContentType = PostFileType.STREAM;
+            this.FileContentType = PostContentType.STREAM;
             this.Headers = new WebHeaderCollection();
         }
 
@@ -225,11 +226,35 @@ namespace Qiniu.Http
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             //write file data
-            if (FileContentType == PostFileType.BYTES)
+            if (FileContentType == PostContentType.BYTES)
             {
                 postDataMemoryStream.Write(this.PostArgs.Data, 0, this.PostArgs.Data.Length);
             }
-            else if (FileContentType == PostFileType.STREAM)
+            else if (FileContentType == PostContentType.FILE)
+            {
+                try
+                {
+                    using (FileStream fs = IsolatedStorageFile.GetUserStoreForApplication()
+                        .OpenFile(this.PostArgs.File, FileMode.Open, FileAccess.Read))
+                    {
+                        byte[] buffer = new byte[BUFFER_SIZE];
+                        int numRead = -1;
+                        while ((numRead = fs.Read(buffer, 0, buffer.Length)) != 0)
+                        {
+                            postDataMemoryStream.Write(buffer, 0, numRead);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (this.CompletionCallback != null)
+                    {
+                        this.CompletionCallback(ResponseInfo.fileError(ex), "");
+                    }
+                    return;
+                }
+            }
+            else if (FileContentType == PostContentType.STREAM)
             {
                 try
                 {

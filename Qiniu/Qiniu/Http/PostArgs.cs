@@ -17,6 +17,8 @@ namespace Qiniu.Http
         public byte[] Data { set; get; }
         // 上传的文件流
         public Stream Stream { set; get; }
+        // 上传的文件，只能是IsolatedStorage中的文件
+        public string File { set; get; }
         //请求参数
         public Dictionary<string, string> Params { set; get; }
         //上传数据或文件的原始名称

@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace Qiniu.Http
 {
-    public enum PostFileType
+    public enum PostContentType
     {
-        BYTES, STREAM,
+        BYTES, STREAM, FILE
     }
 }

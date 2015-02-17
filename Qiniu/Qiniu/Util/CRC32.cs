@@ -1,5 +1,6 @@
 ﻿﻿using System;
 using System.IO;
+using System.IO.IsolatedStorage;
 
 namespace Qiniu.Util
 {
@@ -60,11 +61,11 @@ namespace Qiniu.Util
             return crc.Sum32();
         }
 
-        public static UInt32 CheckSumFile(string fileName)
+        public static UInt32 CheckSumFile(string filePath)
         {
             CRC32 crc = new CRC32();
             int bufferLen = 32 * 1024;
-            using (FileStream fs = File.OpenRead(fileName))
+            using (FileStream fs = IsolatedStorageFile.GetUserStoreForApplication().OpenFile(filePath, FileMode.Open, FileAccess.Read))
             {
                 byte[] buffer = new byte[bufferLen];
                 while (true)

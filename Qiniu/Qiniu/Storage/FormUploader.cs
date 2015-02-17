@@ -24,7 +24,7 @@ namespace Qiniu.Storage
             {
                 postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumBytes(data, data.Length)));
             }
-            httpManager.FileContentType = PostFileType.BYTES;
+            httpManager.FileContentType = PostContentType.BYTES;
             upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
         }
 
@@ -47,10 +47,27 @@ namespace Qiniu.Storage
                 postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumBytes(buffer, cnt)));
                 postArgs.Stream.Seek(0, SeekOrigin.Begin);
             }
-            httpManager.FileContentType = PostFileType.STREAM;
+            httpManager.FileContentType = PostContentType.STREAM;
             upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
         }
  
+        //以multipart/form-data方式上传文件，可以指定key，也可以设置为null
+        public void uploadFile(HttpManager httpManager, string filePath, string key,
+            string token, UploadOptions uploadOptions, CompletionCallback completionCallback)
+        {
+            PostArgs postArgs = new PostArgs();
+            postArgs.File = filePath;
+            postArgs.FileName = Path.GetFileName(filePath);
+            postArgs.Params = new Dictionary<string, string>();
+            //set file crc32 check
+            if (uploadOptions != null && uploadOptions.CheckCrc32)
+            {
+                postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumFile(filePath)));
+            }
+            httpManager.FileContentType = PostContentType.FILE;
+            upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
+        }
+
         private void upload(HttpManager httpManager, PostArgs postArgs, string key, string token,
             UploadOptions uploadOptions, CompletionCallback completionCallback)
         {
