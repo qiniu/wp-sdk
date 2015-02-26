@@ -13,13 +13,14 @@ namespace Qiniu.Storage
         private ResumeRecorder resumeRecorder;
         private KeyGenerator keyGenerator;
 
+        //默认的构造函数
         public UploadManager()
         {
             this.httpManager = new HttpManager();
             this.resumeRecorder = null;
             this.keyGenerator = null;
         }
-
+        
         public UploadManager(HttpManager httpManager)
         {
             this.httpManager = httpManager;
@@ -41,18 +42,23 @@ namespace Qiniu.Storage
             this.keyGenerator = generator;
         }
 
+        #region 上传字节数据
         public void uploadData(byte[] data, string key,
             string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
             new FormUploader().uploadData(this.httpManager, data, key, token, uploadOptions, upCompletionHandler);
         }
+        #endregion
 
+        #region 上传文件流
         public void uploadStream(Stream stream, string key, string token,
             UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
             new FormUploader().uploadStream(this.httpManager, stream, key, token, uploadOptions, upCompletionHandler);
         }
+        #endregion
 
+        #region 上传沙盒文件
         public void uploadFile(string filePath, string key, string token,
             UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
@@ -64,7 +70,7 @@ namespace Qiniu.Storage
                 {
                     fileSize = s.Length;
                 }
-                //check
+                //判断文件大小，选择上传方式
                 if (fileSize <= Config.PUT_THRESHOLD)
                 {
                     new FormUploader().uploadFile(this.httpManager, filePath, key, token, uploadOptions, upCompletionHandler);
@@ -79,5 +85,6 @@ namespace Qiniu.Storage
                 upCompletionHandler(key, ResponseInfo.fileError(ex), null);
             }
         }
+        #endregion
     }
 }

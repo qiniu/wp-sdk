@@ -28,6 +28,20 @@ namespace Qiniu.Storage
         private Stream fileStream;
         private IsolatedStorageFile storage;
 
+        /**
+         * 
+         *  构建一个支持七牛分片上传的对象
+         * 
+         *  httpManager - 上传HttpManager
+         *  recorder    - 上传进度记录者
+         *  recordKey   - 上传进度保存文件名
+         *  filePath    - 上传文件的沙盒路径
+         *  key         - 上传文件保存在七牛的名字
+         *  token       - 上传凭证，从业务服务器获取
+         *  uploadOptions - 上传的可选设置项
+         *  upCompletionHandler - 上传结束处理类对象
+         *
+         */
         public ResumeUploader(HttpManager httpManager, ResumeRecorder recorder, string recordKey, string filePath,
             string key, string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
@@ -54,7 +68,7 @@ namespace Qiniu.Storage
             this.chunkBuffer = new byte[Config.CHUNK_SIZE];
         }
 
-        //发送mkblk请求
+        #region 发送mkblk请求
         private void makeBlock(string upHost, long offset, int blockSize, int chunkSize,
             ProgressHandler progressHandler, CompletionHandler completionHandler)
         {
@@ -75,8 +89,9 @@ namespace Qiniu.Storage
             this.crc32 = CRC32.CheckSumBytes(this.chunkBuffer, chunkSize);
             post(url, this.chunkBuffer, chunkSize, progressHandler, completionHandler);
         }
+        #endregion
 
-        //发送bput请求
+        #region 发送bput请求
         private void putChunk(string upHost, long offset, int chunkSize, string context,
             ProgressHandler progressHandler, CompletionHandler completionHandler)
         {
@@ -98,9 +113,9 @@ namespace Qiniu.Storage
             this.crc32 = CRC32.CheckSumBytes(this.chunkBuffer, chunkSize);
             post(url, this.chunkBuffer, chunkSize, progressHandler, completionHandler);
         }
+        #endregion
 
-
-        //发送mkfile请求
+        #region 发送mkfile请求
         private void makeFile(string upHost, CompletionHandler completionHandler)
         {
             string mimeTypeStr = string.Format("/mimeType/{0}", StringUtils.urlSafeBase64Encode(this.uploadOptions.MimeType));
@@ -128,8 +143,8 @@ namespace Qiniu.Storage
             byte[] postBodyData = Encoding.UTF8.GetBytes(postBody);
             post(url, postBodyData, postBodyData.Length, null, completionHandler);
         }
-
-        //发送数据
+        #endregion
+        #region 发送数据
         private void post(string url, byte[] data, int chunkSize, ProgressHandler progressHandler, CompletionHandler completionHandler)
         {
             byte[] uploadData = new byte[chunkSize];
@@ -141,8 +156,9 @@ namespace Qiniu.Storage
             this.httpManager.CompletionHandler = completionHandler;
             this.httpManager.postData(url);
         }
+        #endregion
 
-        //上传文件
+        #region 上传文件
         public void uploadFile()
         {
             try
@@ -165,7 +181,9 @@ namespace Qiniu.Storage
             long offset = recoveryFromResumeRecord();
             this.nextTask(offset, 0, Config.UPLOAD_HOST);
         }
+        #endregion
 
+        #region 从中断日志中读取上传进度
         private long recoveryFromResumeRecord()
         {
             long offset = 0;
@@ -184,7 +202,9 @@ namespace Qiniu.Storage
             }
             return offset;
         }
+        #endregion
 
+        #region 记录/更新上传进度信息
         private void record(long offset)
         {
             if (this.resumeRecorder == null || offset == 0)
@@ -192,9 +212,11 @@ namespace Qiniu.Storage
                 return;
             }
             ResumeRecord r = new ResumeRecord(this.size, offset, this.lastModifyTime, this.contexts);
-            this.resumeRecorder.set(this.recordKey,Encoding.UTF8.GetBytes(r.toJsonData()));
+            this.resumeRecorder.set(this.recordKey, Encoding.UTF8.GetBytes(r.toJsonData()));
         }
+        #endregion
 
+        #region 删除上传进度信息
         private void removeRecord()
         {
             if (this.resumeRecorder != null)
@@ -202,24 +224,32 @@ namespace Qiniu.Storage
                 this.resumeRecorder.del(this.recordKey);
             }
         }
+        #endregion
 
+        #region 判断上传是否被取消
         private bool isCancelled()
         {
             return this.uploadOptions.CancellationSignal();
         }
+        #endregion
 
+        #region 计算每次上传的分片大小
         private int calcBPutChunkSize(long offset)
         {
             int left = (int)(this.size - offset);
             return left < Config.CHUNK_SIZE ? left : Config.CHUNK_SIZE;
         }
+        #endregion
 
+        #region 计算每次创建的块大小
         private int calcMakeBlockSize(long offset)
         {
             int left = (int)(this.size - offset);
             return left < Config.BLOCK_SIZE ? left : Config.BLOCK_SIZE;
         }
+        #endregion
 
+        #region 文件上传任务
         private void nextTask(long offset, int retried, string upHost)
         {
             //上传中途触发停止
@@ -322,6 +352,7 @@ namespace Qiniu.Storage
                 nextTask(offset + chunkSize, retried, upHost);
             });
 
+            //创建块
             if (offset % Config.BLOCK_SIZE == 0)
             {
                 int blockSize = calcMakeBlockSize(offset);
@@ -329,8 +360,10 @@ namespace Qiniu.Storage
                 return;
             }
 
+            //上传分片
             string context = this.contexts[offset / Config.BLOCK_SIZE];
             this.putChunk(upHost, offset, chunkSize, context, progressHandler, completionHandler);
         }
+        #endregion
     }
 }

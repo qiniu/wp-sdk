@@ -8,6 +8,7 @@ namespace Qiniu.Storage
 {
     public class FormUploader
     {
+        //上传字节数据
         public void uploadData(HttpManager httpManager, byte[] data, string key,
             string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
@@ -21,6 +22,7 @@ namespace Qiniu.Storage
             upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
 
+        //上传文件流
         public void uploadStream(HttpManager httpManager, Stream stream, string key, string token,
             UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
@@ -34,6 +36,7 @@ namespace Qiniu.Storage
             upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
 
+        //上传沙盒文件
         public void uploadFile(HttpManager httpManager, string filePath, string key,
             string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
@@ -52,14 +55,14 @@ namespace Qiniu.Storage
                 uploadOptions = UploadOptions.defaultOptions();
             }
             postArgs.Params = new Dictionary<string, string>();
-            //set key
+            //设置key
             if (!string.IsNullOrEmpty(key))
             {
                 postArgs.Params.Add("key", key);
             }
-            //set token
+            //设置token
             postArgs.Params.Add("token", token);
-            //set check crc32
+            //设置crc32校验
             if (uploadOptions.CheckCrc32)
             {
                 switch (httpManager.FileContentType)
@@ -80,15 +83,14 @@ namespace Qiniu.Storage
                 }
             }
 
-            //set mimeType
+            //设置MimeType
             postArgs.MimeType = uploadOptions.MimeType;
-            //set extra params
+            //设置扩展参数
             foreach (KeyValuePair<string, string> kvp in uploadOptions.ExtraParams)
             {
                 postArgs.Params.Add(kvp.Key, kvp.Value);
             }
-
-            //set progress callback and cancellation callback
+            //设置进度处理和取消信号
             httpManager.ProgressHandler = new ProgressHandler(delegate(int bytesWritten, int totalBytes)
             {
                 double percent = (double)bytesWritten / totalBytes;
@@ -100,7 +102,7 @@ namespace Qiniu.Storage
                 return uploadOptions.CancellationSignal();
             });
             httpManager.PostArgs = postArgs;
-            //retry once if first time failed
+            //第一次失败后使用备用域名重试一次
             httpManager.CompletionHandler = new CompletionHandler(delegate(ResponseInfo respInfo, string response)
             {
                 if (respInfo.needRetry())
