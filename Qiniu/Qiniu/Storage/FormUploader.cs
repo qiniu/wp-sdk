@@ -103,19 +103,7 @@ namespace Qiniu.Storage
             //retry once if first time failed
             httpManager.CompletionHandler = new CompletionHandler(delegate(ResponseInfo respInfo, string response)
             {
-                if (respInfo.isOk())
-                {
-                    if (httpManager.PostArgs.Stream != null)
-                    {
-                        httpManager.PostArgs.Stream.Close();
-                    }
-                    if (upCompletionHandler != null)
-                    {
-                        upCompletionHandler(key, respInfo, response);
-                    }
-                    return;
-                }
-                else if (respInfo.needRetry())
+                if (respInfo.needRetry())
                 {
                     if (httpManager.PostArgs.Stream != null)
                     {
@@ -134,6 +122,17 @@ namespace Qiniu.Storage
                     });
                     httpManager.CompletionHandler = retried;
                     httpManager.multipartPost(Config.UP_HOST);
+                }
+                else
+                {
+                    if (httpManager.PostArgs.Stream != null)
+                    {
+                        httpManager.PostArgs.Stream.Close();
+                    }
+                    if (upCompletionHandler != null)
+                    {
+                        upCompletionHandler(key, respInfo, response);
+                    }
                 }
             });
             httpManager.multipartPost(Config.UPLOAD_HOST);
