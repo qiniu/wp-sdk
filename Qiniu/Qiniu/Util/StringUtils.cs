@@ -32,12 +32,12 @@ namespace Qiniu.Util
             }
             StringBuilder joined = new StringBuilder();
             int arrayLength = array.Length;
-            for(int i=0;i<arrayLength;i++)
+            for (int i = 0; i < arrayLength; i++)
             {
                 joined.Append("\"").Append(array[i]).Append("\"");
-                if(i<arrayLength-1)
+                if (i < arrayLength - 1)
                 {
-                    joined.Append(";");
+                    joined.Append(",");
                 }
             }
             return joined.ToString();

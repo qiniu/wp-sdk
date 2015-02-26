@@ -172,11 +172,14 @@ namespace Qiniu.Storage
             if (this.resumeRecorder != null)
             {
                 byte[] data = this.resumeRecorder.get(this.recordKey);
-                ResumeRecord r = ResumeRecord.fromJsonData(Encoding.UTF8.GetString(data,0,data.Length));
-                offset = r.Offset;
-                for (int i = 0; i < r.Contexts.Length; i++)
+                if (data != null)
                 {
-                    this.contexts[i] = r.Contexts[i];
+                    ResumeRecord r = ResumeRecord.fromJsonData(Encoding.UTF8.GetString(data, 0, data.Length));
+                    offset = r.Offset;
+                    for (int i = 0; i < r.Contexts.Length; i++)
+                    {
+                        this.contexts[i] = r.Contexts[i];
+                    }
                 }
             }
             return offset;
