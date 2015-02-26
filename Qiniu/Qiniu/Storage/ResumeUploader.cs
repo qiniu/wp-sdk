@@ -199,7 +199,7 @@ namespace Qiniu.Storage
         {
             if (this.resumeRecorder != null)
             {
-                this.resumeRecorder.del(this.key);
+                this.resumeRecorder.del(this.recordKey);
             }
         }
 

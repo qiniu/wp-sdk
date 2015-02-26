@@ -29,29 +29,32 @@ namespace Qiniu.Storage.Persistent
         public void set(string key, byte[] data)
         {
             string filePath = Path.Combine(this.dir, StringUtils.urlSafeBase64Encode(key));
-            IsolatedStorageFileStream stream =
-                new IsolatedStorageFileStream(filePath, FileMode.Create, this.storage);
-            stream.Write(data, 0, data.Length);
-            stream.Flush();
-            stream.Close();
+            using (IsolatedStorageFileStream stream =
+                new IsolatedStorageFileStream(filePath, FileMode.Create, this.storage))
+            {
+                stream.Write(data, 0, data.Length);
+                stream.Flush();
+            }
         }
-
 
         public byte[] get(string key)
         {
+            byte[] data = null;
             string filePath = Path.Combine(this.dir, StringUtils.urlSafeBase64Encode(key));
             try
             {
-                IsolatedStorageFileStream stream =
-                    new IsolatedStorageFileStream(filePath, FileMode.Open, this.storage);
-                byte[] data = new byte[stream.Length];
-                stream.Read(data, 0, data.Length);
-                return data;
+                using (IsolatedStorageFileStream stream =
+                    new IsolatedStorageFileStream(filePath, FileMode.Open, this.storage))
+                {
+                    data = new byte[stream.Length];
+                    stream.Read(data, 0, data.Length);
+                }
             }
             catch (Exception)
             {
-                return null;
+
             }
+            return data;
         }
 
         public void del(string key)
