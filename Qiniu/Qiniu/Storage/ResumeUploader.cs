@@ -38,7 +38,18 @@ namespace Qiniu.Storage
             this.key = key;
             this.storage = IsolatedStorageFile.GetUserStoreForApplication();
             this.uploadOptions = (uploadOptions == null) ? UploadOptions.defaultOptions() : uploadOptions;
-            this.upCompletionHandler = upCompletionHandler;
+            this.upCompletionHandler = new UpCompletionHandler(delegate(string fileKey, ResponseInfo respInfo, string response)
+            {
+                if (this.fileStream != null)
+                {
+                    try
+                    {
+                        this.fileStream.Close();
+                    }
+                    catch (Exception) { }
+                }
+                upCompletionHandler(key, respInfo, response);
+            });
             this.httpManager.setAuthHeader("UpToken " + token);
             this.chunkBuffer = new byte[Config.CHUNK_SIZE];
         }
