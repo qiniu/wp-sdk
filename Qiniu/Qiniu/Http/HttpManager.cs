@@ -69,7 +69,10 @@ namespace Qiniu.Http
             this.webRequest.AllowAutoRedirect = false;
             this.webRequest.Method = "POST";
             this.webRequest.ContentType = APPLICATION_FORM_URLENCODED;
-            this.webRequest.Headers = new WebHeaderCollection();
+            if (this.webRequest.Headers == null)
+            {
+                this.webRequest.Headers = new WebHeaderCollection();
+            }
             foreach (string headerKey in this.Headers.AllKeys)
             {
                 this.webRequest.Headers[headerKey] = this.Headers[headerKey];
@@ -124,7 +127,10 @@ namespace Qiniu.Http
             this.webRequest.Method = "POST";
             this.webRequest.ContentType = APPLICATION_OCTET_STREAM;
             this.webRequest.ContentLength = this.PostArgs.Data.Length;
-            this.webRequest.Headers = new WebHeaderCollection();
+            if (this.webRequest.Headers == null)
+            {
+                this.webRequest.Headers = new WebHeaderCollection();
+            }
             foreach (string headerKey in this.Headers.AllKeys)
             {
                 this.webRequest.Headers[headerKey] = this.Headers[headerKey];
@@ -292,7 +298,10 @@ namespace Qiniu.Http
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             postDataMemoryStream.Flush();
             this.webRequest.ContentLength = postDataMemoryStream.Length;
-            this.webRequest.Headers = new WebHeaderCollection();
+            if (this.webRequest.Headers == null)
+            {
+                this.webRequest.Headers = new WebHeaderCollection();
+            }
             foreach (string headerKey in this.Headers.AllKeys)
             {
                 this.webRequest.Headers[headerKey] = this.Headers[headerKey];
