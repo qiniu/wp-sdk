@@ -24,9 +24,9 @@ namespace Qiniu.Http
         public PostContentType FileContentType { set; get; }
         public PostArgs PostArgs { set; get; }
         public WebHeaderCollection Headers { set; get; }
-        public ProgressCallback ProgressCallback { set; get; }
-        public CompletionCallback CompletionCallback { set; get; }
-        public CancellationCallback CancellationCallback { set; get; }
+        public ProgressHandler ProgressHandler { set; get; }
+        public CompletionHandler CompletionHandler { set; get; }
+        public CancellationSignal CancellationSignal { set; get; }
         private MemoryStream postDataMemoryStream;
         private double duration;
         private DateTime startTime;
@@ -69,6 +69,11 @@ namespace Qiniu.Http
             this.webRequest.AllowAutoRedirect = false;
             this.webRequest.Method = "POST";
             this.webRequest.ContentType = APPLICATION_FORM_URLENCODED;
+            this.webRequest.Headers = new WebHeaderCollection();
+            foreach (string headerKey in this.Headers.AllKeys)
+            {
+                this.webRequest.Headers[headerKey] = this.Headers[headerKey];
+            }
             //prepare data
             StringBuilder postParams = new StringBuilder();
             if (this.PostArgs != null && this.PostArgs.Params != null)
@@ -118,6 +123,12 @@ namespace Qiniu.Http
             this.webRequest.AllowAutoRedirect = false;
             this.webRequest.Method = "POST";
             this.webRequest.ContentType = APPLICATION_OCTET_STREAM;
+            this.webRequest.ContentLength = this.PostArgs.Data.Length;
+            this.webRequest.Headers = new WebHeaderCollection();
+            foreach (string headerKey in this.Headers.AllKeys)
+            {
+                this.webRequest.Headers[headerKey] = this.Headers[headerKey];
+            }
             this.webRequest.BeginGetRequestStream(new AsyncCallback(firePostDataRequest), webRequest);
             allDone.WaitOne(timeout);
         }
@@ -138,11 +149,11 @@ namespace Qiniu.Http
             for (int i = 0; i < writeTimes; i++)
             {
                 //check cancellation signal
-                if (CancellationCallback != null && CancellationCallback())
+                if (CancellationSignal != null && CancellationSignal())
                 {
-                    if (CompletionCallback != null)
+                    if (CompletionHandler != null)
                     {
-                        CompletionCallback(ResponseInfo.cancelled(), "");
+                        CompletionHandler(ResponseInfo.cancelled(), "");
                     }
                     postDataStream.Close();
                     return;
@@ -155,14 +166,13 @@ namespace Qiniu.Http
                 }
                 postDataStream.Write(this.PostArgs.Data, offset, size);
                 bytesWritten += size;
-                if (ProgressCallback != null)
+                if (ProgressHandler != null)
                 {
-                    ProgressCallback(bytesWritten, totalBytes);
+                    ProgressHandler(bytesWritten, totalBytes);
                 }
             }
             postDataStream.Flush();
             postDataStream.Close();
-            request.ContentLength = totalBytes;
             request.BeginGetResponse(new AsyncCallback(handleResponse), request);
         }
 
@@ -247,9 +257,9 @@ namespace Qiniu.Http
                 }
                 catch (Exception ex)
                 {
-                    if (this.CompletionCallback != null)
+                    if (this.CompletionHandler != null)
                     {
-                        this.CompletionCallback(ResponseInfo.fileError(ex), "");
+                        this.CompletionHandler(ResponseInfo.fileError(ex), "");
                     }
                     return;
                 }
@@ -267,9 +277,9 @@ namespace Qiniu.Http
                 }
                 catch (Exception ex)
                 {
-                    if (this.CompletionCallback != null)
+                    if (this.CompletionHandler != null)
                     {
-                        this.CompletionCallback(ResponseInfo.fileError(ex), "");
+                        this.CompletionHandler(ResponseInfo.fileError(ex), "");
                     }
                     return;
                 }
@@ -282,6 +292,11 @@ namespace Qiniu.Http
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             postDataMemoryStream.Flush();
             this.webRequest.ContentLength = postDataMemoryStream.Length;
+            this.webRequest.Headers = new WebHeaderCollection();
+            foreach (string headerKey in this.Headers.AllKeys)
+            {
+                this.webRequest.Headers[headerKey] = this.Headers[headerKey];
+            }
             this.webRequest.BeginGetRequestStream(new AsyncCallback(fireMultipartPostRequest), webRequest);
             allDone.WaitOne(timeout);
         }
@@ -306,20 +321,20 @@ namespace Qiniu.Http
             while ((memNumRead = postDataMemoryStream.Read(memBuffer, 0, memBuffer.Length)) != 0)
             {
                 //check cancellation signal
-                if (this.CancellationCallback != null && this.CancellationCallback())
+                if (this.CancellationSignal != null && this.CancellationSignal())
                 {
-                    if (this.CompletionCallback != null)
+                    if (this.CompletionHandler != null)
                     {
-                        this.CompletionCallback(ResponseInfo.cancelled(), "");
+                        this.CompletionHandler(ResponseInfo.cancelled(), "");
                     }
                     postDataStream.Close();
                     return;
                 }
                 postDataStream.Write(memBuffer, 0, memNumRead);
                 bytesWritten += memNumRead;
-                if (ProgressCallback != null)
+                if (ProgressHandler != null)
                 {
-                    ProgressCallback(bytesWritten, totalBytes);
+                    ProgressHandler(bytesWritten, totalBytes);
                 }
             }
             //flush and close
@@ -422,9 +437,9 @@ namespace Qiniu.Http
 
             duration = DateTime.Now.Subtract(this.startTime).TotalSeconds;
             ResponseInfo respInfo = new ResponseInfo(statusCode, reqId, xlog, xvia, host, ip, duration, error);
-            if (this.CompletionCallback != null)
+            if (this.CompletionHandler != null)
             {
-                this.CompletionCallback(respInfo, respData);
+                this.CompletionHandler(respInfo, respData);
             }
             allDone.Set();
         }

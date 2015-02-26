@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Qiniu.Http
 {
@@ -77,7 +73,7 @@ namespace Qiniu.Http
 
         public bool needRetry()
         {
-            return isNetworkBroken() || isServerError() || StatusCode == 406  ||(StatusCode==200 && Error!=null);
+            return isNetworkBroken() || isServerError() || StatusCode == 406 || (StatusCode == 200 && Error != null);
         }
 
         private string toStr(string val)
@@ -90,7 +86,5 @@ namespace Qiniu.Http
             return string.Format("ResponseInfo: status:{0}, reqId:{1}, xlog:{2}, xvia:{3}, host:{4}, ip:{5}, duration:{6} s, error:{7}",
                  StatusCode, toStr(ReqId), toStr(Xlog), toStr(Xvia), toStr(Host), toStr(Ip), Duration, toStr(Error));
         }
-
-
     }
 }

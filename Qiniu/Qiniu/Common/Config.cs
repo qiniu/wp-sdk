@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace Qiniu.Common
 {
     public class Config
@@ -24,7 +19,7 @@ namespace Qiniu.Common
         public const int BLOCK_SIZE = 4 * 1024 * 1024;
 
         //上传失败重试次数
-        public const int RETRY_MAX = 3;
+        public const int RETRY_MAX = 5;
 
         //分片上传的阈值，文件超过该大小采用分片上传
         public const int PUT_THRESHOLD = 512;

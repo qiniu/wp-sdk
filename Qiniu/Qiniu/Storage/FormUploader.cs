@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Text;
 using System.IO;
 using Qiniu.Http;
 using Qiniu.Common;
@@ -10,67 +9,49 @@ namespace Qiniu.Storage
     public class FormUploader
     {
         public void uploadData(HttpManager httpManager, byte[] data, string key,
-            string token, UploadOptions uploadOptions, CompletionCallback completionCallback)
+            string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
             PostArgs postArgs = new PostArgs();
             postArgs.Data = data;
-            postArgs.Params = new Dictionary<string, string>();
             if (key != null)
             {
                 postArgs.FileName = key;
             }
-            //set file crc32 check
-            if (uploadOptions != null && uploadOptions.CheckCrc32)
-            {
-                postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumBytes(data, data.Length)));
-            }
             httpManager.FileContentType = PostContentType.BYTES;
-            upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
+            upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
 
         public void uploadStream(HttpManager httpManager, Stream stream, string key, string token,
-            UploadOptions uploadOptions, CompletionCallback completionCallback)
+            UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
             PostArgs postArgs = new PostArgs();
             postArgs.Stream = stream;
-            postArgs.Params = new Dictionary<string, string>();
             if (key != null)
             {
                 postArgs.FileName = key;
             }
-            //set file crc32 check
-            if (uploadOptions != null && uploadOptions.CheckCrc32)
-            {
-                long streamLength = stream.Length;
-                byte[] buffer = new byte[streamLength];
-                int cnt = stream.Read(buffer, 0, (int)streamLength);
-                postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumBytes(buffer, cnt)));
-                postArgs.Stream.Seek(0, SeekOrigin.Begin);
-            }
             httpManager.FileContentType = PostContentType.STREAM;
-            upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
+            upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
- 
-        //以multipart/form-data方式上传文件，可以指定key，也可以设置为null
+
         public void uploadFile(HttpManager httpManager, string filePath, string key,
-            string token, UploadOptions uploadOptions, CompletionCallback completionCallback)
+            string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
             PostArgs postArgs = new PostArgs();
             postArgs.File = filePath;
             postArgs.FileName = Path.GetFileName(filePath);
-            postArgs.Params = new Dictionary<string, string>();
-            //set file crc32 check
-            if (uploadOptions != null && uploadOptions.CheckCrc32)
-            {
-                postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumFile(filePath)));
-            }
             httpManager.FileContentType = PostContentType.FILE;
-            upload(httpManager, postArgs, key, token, uploadOptions, completionCallback);
+            upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
 
         private void upload(HttpManager httpManager, PostArgs postArgs, string key, string token,
-            UploadOptions uploadOptions, CompletionCallback completionCallback)
+            UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
+            if (uploadOptions == null)
+            {
+                uploadOptions = UploadOptions.defaultOptions();
+            }
+            postArgs.Params = new Dictionary<string, string>();
             //set key
             if (!string.IsNullOrEmpty(key))
             {
@@ -78,60 +59,80 @@ namespace Qiniu.Storage
             }
             //set token
             postArgs.Params.Add("token", token);
-            //set mimeType
-            string mimeType = "application/octet-stream";
-            if (uploadOptions != null && !string.IsNullOrEmpty(uploadOptions.MimeType))
+            //set check crc32
+            if (uploadOptions.CheckCrc32)
             {
-                mimeType = uploadOptions.MimeType;
-            }
-            postArgs.MimeType = mimeType;
-            //set extra params
-            if (uploadOptions != null && uploadOptions.ExtraParams != null)
-            {
-                foreach (KeyValuePair<string, string> kvp in uploadOptions.ExtraParams)
+                switch (httpManager.FileContentType)
                 {
-                    postArgs.Params.Add(kvp.Key, kvp.Value);
+                    case PostContentType.BYTES:
+                        postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumBytes(postArgs.Data, postArgs.Data.Length)));
+                        break;
+                    case PostContentType.STREAM:
+                        long streamLength = postArgs.Stream.Length;
+                        byte[] buffer = new byte[streamLength];
+                        int cnt = postArgs.Stream.Read(buffer, 0, (int)streamLength);
+                        postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumBytes(buffer, cnt)));
+                        postArgs.Stream.Seek(0, SeekOrigin.Begin);
+                        break;
+                    case PostContentType.FILE:
+                        postArgs.Params.Add("crc32", string.Format("{0}", CRC32.CheckSumFile(postArgs.File)));
+                        break;
                 }
             }
-            //set progress callback and cancellation callback
-            if (uploadOptions != null)
+
+            //set mimeType
+            postArgs.MimeType = uploadOptions.MimeType;
+            //set extra params
+            foreach (KeyValuePair<string, string> kvp in uploadOptions.ExtraParams)
             {
-                httpManager.ProgressCallback = uploadOptions.ProgressCallback;
-                httpManager.CancellationCallback = uploadOptions.CancellationCallback;
+                postArgs.Params.Add(kvp.Key, kvp.Value);
             }
-            
+
+            //set progress callback and cancellation callback
+            httpManager.ProgressHandler = new ProgressHandler(delegate(int bytesWritten, int totalBytes)
+            {
+                double percent = (double)bytesWritten / totalBytes;
+                uploadOptions.ProgressHandler(key, percent);
+            });
+
+            httpManager.CancellationSignal = new CancellationSignal(delegate()
+            {
+                return uploadOptions.CancellationSignal();
+            });
             httpManager.PostArgs = postArgs;
             //retry once if first time failed
-            httpManager.CompletionCallback = new CompletionCallback(delegate(ResponseInfo respInfo,string response){
+            httpManager.CompletionHandler = new CompletionHandler(delegate(ResponseInfo respInfo, string response)
+            {
                 if (respInfo.isOk())
                 {
                     if (httpManager.PostArgs.Stream != null)
                     {
                         httpManager.PostArgs.Stream.Close();
                     }
-                    if (completionCallback != null)
+                    if (upCompletionHandler != null)
                     {
-                        completionCallback(respInfo, response);
+                        upCompletionHandler(key, respInfo, response);
                     }
                     return;
                 }
-                else if(respInfo.needRetry())
+                else if (respInfo.needRetry())
                 {
                     if (httpManager.PostArgs.Stream != null)
                     {
                         httpManager.PostArgs.Stream.Seek(0, SeekOrigin.Begin);
                     }
-                    CompletionCallback retried = new CompletionCallback(delegate(ResponseInfo retryRespInfo,string retryResponse){
+                    CompletionHandler retried = new CompletionHandler(delegate(ResponseInfo retryRespInfo, string retryResponse)
+                    {
                         if (httpManager.PostArgs.Stream != null)
                         {
                             httpManager.PostArgs.Stream.Close();
                         }
-                        if (completionCallback != null)
+                        if (upCompletionHandler != null)
                         {
-                            completionCallback(retryRespInfo, retryResponse);
+                            upCompletionHandler(key, retryRespInfo, retryResponse);
                         }
                     });
-                    httpManager.CompletionCallback = retried;
+                    httpManager.CompletionHandler = retried;
                     httpManager.multipartPost(Config.UP_HOST);
                 }
             });
