@@ -6,7 +6,7 @@ namespace Qiniu.Storage
     public class UploadOptions
     {
         //扩展变量,名词必须以x:开头，另外值不能为空
-        public Dictionary<string, string> ExtraParams { set; get; }
+        private Dictionary<string, string> extraParams;
         //上传数据或文件的mimeType
         public string MimeType { set; get; }
         //是否对上传文件或数据做crc32校验
@@ -16,10 +16,24 @@ namespace Qiniu.Storage
         //上传取消信号
         public UpCancellationSignal CancellationSignal { set; get; }
 
+        //过滤掉所有不符合规则的扩展参数
+        public Dictionary<string, string> ExtraParams
+        {
+            get
+            {
+                this.extraParams = filterParams(extraParams);
+                return this.extraParams;
+            }
+            set
+            {
+                this.extraParams = filterParams(extraParams);
+            }
+        }
+
         public UploadOptions(Dictionary<string, string> extraParams, string mimeType, bool checkCrc32,
             UpProgressHandler upProgressHandler, UpCancellationSignal upCancellationSignal)
         {
-            this.ExtraParams = filterParams(extraParams);
+            this.ExtraParams = extraParams;
             this.MimeType = mime(mimeType);
             this.CheckCrc32 = checkCrc32;
             this.CancellationSignal = (upCancellationSignal != null) ? upCancellationSignal : new UpCancellationSignal(delegate()
@@ -28,7 +42,7 @@ namespace Qiniu.Storage
             });
             this.ProgressHandler = (upProgressHandler != null) ? upProgressHandler : new UpProgressHandler(delegate(string key, double percent)
             {
-                Debug.WriteLine("qiniu up progress " + percent + "%");
+                Debug.WriteLine("qiniu up progress " + percent);
             });
         }
 
@@ -55,7 +69,7 @@ namespace Qiniu.Storage
             return filtered;
         }
 
-        //
+        //设置默认的mimeType
         private string mime(string mimeType)
         {
             if (mimeType == null || mimeType.Trim().Length == 0)
