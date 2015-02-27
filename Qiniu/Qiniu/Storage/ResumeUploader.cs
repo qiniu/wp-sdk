@@ -54,6 +54,8 @@ namespace Qiniu.Storage
             this.uploadOptions = (uploadOptions == null) ? UploadOptions.defaultOptions() : uploadOptions;
             this.upCompletionHandler = new UpCompletionHandler(delegate(string fileKey, ResponseInfo respInfo, string response)
             {
+                uploadOptions.ProgressHandler(key, 1.0);
+
                 if (this.fileStream != null)
                 {
                     try
@@ -62,6 +64,7 @@ namespace Qiniu.Storage
                     }
                     catch (Exception) { }
                 }
+                
                 if (upCompletionHandler != null)
                 {
                     upCompletionHandler(key, respInfo, response);
@@ -83,6 +86,8 @@ namespace Qiniu.Storage
             this.uploadOptions = (uploadOptions == null) ? UploadOptions.defaultOptions() : uploadOptions;
             this.upCompletionHandler = new UpCompletionHandler(delegate(string fileKey, ResponseInfo respInfo, string response)
             {
+                uploadOptions.ProgressHandler(key, 1.0);
+
                 if (this.fileStream != null)
                 {
                     try
@@ -339,6 +344,10 @@ namespace Qiniu.Storage
             ProgressHandler progressHandler = new ProgressHandler(delegate(int bytesWritten, int totalBytes)
             {
                 double percent = (double)(offset + bytesWritten) / this.size;
+                if (percent > 0.95)
+                {
+                    percent = 0.95;
+                }
                 this.uploadOptions.ProgressHandler(this.key, percent);
             });
 

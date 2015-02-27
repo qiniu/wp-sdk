@@ -121,6 +121,11 @@ namespace Qiniu.Storage
             httpManager.ProgressHandler = new ProgressHandler(delegate(int bytesWritten, int totalBytes)
             {
                 double percent = (double)bytesWritten / totalBytes;
+                //这样做是为了等待回复
+                if (percent > 0.95)
+                {
+                    percent = 0.95;
+                }
                 uploadOptions.ProgressHandler(key, percent);
             });
 
@@ -140,10 +145,13 @@ namespace Qiniu.Storage
                     }
                     CompletionHandler retried = new CompletionHandler(delegate(ResponseInfo retryRespInfo, string retryResponse)
                     {
+                        uploadOptions.ProgressHandler(key, 1.0);
+
                         if (httpManager.PostArgs.Stream != null)
                         {
                             httpManager.PostArgs.Stream.Close();
                         }
+
                         if (upCompletionHandler != null)
                         {
                             upCompletionHandler(key, retryRespInfo, retryResponse);
@@ -154,10 +162,13 @@ namespace Qiniu.Storage
                 }
                 else
                 {
+                    uploadOptions.ProgressHandler(key, 1.0);
+
                     if (httpManager.PostArgs.Stream != null)
                     {
                         httpManager.PostArgs.Stream.Close();
                     }
+
                     if (upCompletionHandler != null)
                     {
                         upCompletionHandler(key, respInfo, response);
