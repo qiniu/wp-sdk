@@ -127,7 +127,7 @@ namespace Qiniu.Storage
                 }
                 else
                 {
-                    new ResumeUploader(this.httpManager, this.resumeRecorder, this.keyGenerator(), filePath, key, token, uploadOptions, upCompletionHandler);
+                    new ResumeUploader(this.httpManager, this.resumeRecorder, this.keyGenerator(), filePath, key, token, uploadOptions, upCompletionHandler).uploadFile();
                 }
             }
             catch (Exception ex)
