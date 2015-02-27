@@ -50,12 +50,14 @@ namespace Qiniu.Http
         /// <returns>UserAgent</returns>
         private string getUserAgent()
         {
-            return string.Format("QiniuWindowsPhone/{0} ({1}; {2}; {3}; {4}; {5})",
+            return string.Format("QiniuWindowsPhone/{0} ({1}; {2}; {3}; {4}; {5}; {6}; {7})",
                 Config.VERSION,
                 Microsoft.Phone.Info.DeviceStatus.DeviceName,
                 Microsoft.Phone.Info.DeviceStatus.DeviceHardwareVersion,
                 Microsoft.Phone.Info.DeviceStatus.DeviceFirmwareVersion,
                 Microsoft.Phone.Info.DeviceStatus.DeviceManufacturer,
+                Environment.OSVersion.Platform,
+                Environment.OSVersion.Version,
                 genId());
         }
 
