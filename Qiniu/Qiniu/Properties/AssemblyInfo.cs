@@ -6,13 +6,13 @@ using System.Resources;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Qiniu")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Qiniu Windows Phone SDK")]
+[assembly: AssemblyDescription("Qiniu Windows Phone SDK")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Qiniu")]
+[assembly: AssemblyCompany("Qiniu Cloud")]
+[assembly: AssemblyProduct("Qiniu Windows Phone SDK")]
 [assembly: AssemblyCopyright("Copyright ©  2015")]
-[assembly: AssemblyTrademark("")]
+[assembly: AssemblyTrademark("Qiniu")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible 
