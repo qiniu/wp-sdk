@@ -127,12 +127,20 @@ namespace Qiniu.Storage
                 }
                 else
                 {
-                    new ResumeUploader(this.httpManager, this.resumeRecorder, this.keyGenerator(), filePath, key, token, uploadOptions, upCompletionHandler).uploadFile();
+                    string recorderKey = null;
+                    if (this.keyGenerator != null)
+                    {
+                        recorderKey = this.keyGenerator();
+                    }
+                    new ResumeUploader(this.httpManager, this.resumeRecorder, recorderKey, filePath, key, token, uploadOptions, upCompletionHandler).uploadFile();
                 }
             }
             catch (Exception ex)
             {
-                upCompletionHandler(key, ResponseInfo.fileError(ex), null);
+                if (upCompletionHandler != null)
+                {
+                    upCompletionHandler(key, ResponseInfo.fileError(ex), null);
+                }
             }
         }
         #endregion

@@ -62,7 +62,10 @@ namespace Qiniu.Storage
                     }
                     catch (Exception) { }
                 }
-                upCompletionHandler(key, respInfo, response);
+                if (upCompletionHandler != null)
+                {
+                    upCompletionHandler(key, respInfo, response);
+                }
             });
             this.httpManager.setAuthHeader("UpToken " + token);
             this.chunkBuffer = new byte[Config.CHUNK_SIZE];
@@ -80,10 +83,7 @@ namespace Qiniu.Storage
             }
             catch (Exception ex)
             {
-                if (this.upCompletionHandler != null)
-                {
-                    this.upCompletionHandler(this.key, ResponseInfo.fileError(ex), "");
-                }
+                this.upCompletionHandler(this.key, ResponseInfo.fileError(ex), "");
                 return;
             }
             this.crc32 = CRC32.CheckSumBytes(this.chunkBuffer, chunkSize);
@@ -104,10 +104,7 @@ namespace Qiniu.Storage
             }
             catch (Exception ex)
             {
-                if (this.upCompletionHandler != null)
-                {
-                    this.upCompletionHandler(this.key, ResponseInfo.fileError(ex), "");
-                }
+                this.upCompletionHandler(this.key, ResponseInfo.fileError(ex), "");
                 return;
             }
             this.crc32 = CRC32.CheckSumBytes(this.chunkBuffer, chunkSize);
@@ -174,10 +171,7 @@ namespace Qiniu.Storage
             }
             catch (Exception ex)
             {
-                if (this.upCompletionHandler != null)
-                {
-                    this.upCompletionHandler(this.key, ResponseInfo.fileError(ex), "");
-                }
+                this.upCompletionHandler(this.key, ResponseInfo.fileError(ex), "");
                 return;
             }
 
@@ -190,7 +184,7 @@ namespace Qiniu.Storage
         private long recoveryFromResumeRecord()
         {
             long offset = 0;
-            if (this.resumeRecorder != null)
+            if (this.resumeRecorder != null && this.recordKey != null)
             {
                 byte[] data = this.resumeRecorder.get(this.recordKey);
                 if (data != null)
@@ -222,7 +216,7 @@ namespace Qiniu.Storage
         #region 删除上传进度信息
         private void removeRecord()
         {
-            if (this.resumeRecorder != null)
+            if (this.resumeRecorder != null && this.recordKey != null)
             {
                 this.resumeRecorder.del(this.recordKey);
             }
