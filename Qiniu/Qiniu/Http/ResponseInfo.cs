@@ -111,21 +111,12 @@ namespace Qiniu.Http
         }
 
         /// <summary>
-        /// 检测是否需要切换到备用服务器
-        /// </summary>
-        /// <returns>是否切换</returns>
-        public bool needSwitchServer()
-        {
-            return isNetworkBroken() || (StatusCode >= 500 && StatusCode < 600 && StatusCode != 579);
-        }
-
-        /// <summary>
         /// 检测客户端是否需要重试上传请求
         /// </summary>
         /// <returns>是否重试</returns>
         public bool needRetry()
         {
-            return isNetworkBroken() || isServerError() || StatusCode == 406 || (StatusCode == 200 && Error != null);
+            return isNetworkBroken() || isServerError() || StatusCode == 404 || StatusCode == 406 || (StatusCode == 200 && Error != null);
         }
 
         private string toStr(string val)

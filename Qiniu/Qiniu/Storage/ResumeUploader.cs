@@ -324,11 +324,7 @@ namespace Qiniu.Storage
                     //失败重试
                     if (respInfo.needRetry() && retried < Config.RETRY_MAX)
                     {
-                        string upHost2 = upHost;
-                        if (respInfo.needSwitchServer())
-                        {
-                            upHost2 = Config.UP_HOST;
-                        }
+                        string upHost2 = Config.UP_HOST;
                         nextTask(offset, retried + 1, upHost2);
                         return;
                     }
@@ -364,7 +360,7 @@ namespace Qiniu.Storage
                     }
 
                     String upHost2 = upHost;
-                    if (respInfo.needSwitchServer())
+                    if (respInfo.needRetry())
                     {
                         upHost2 = Config.UP_HOST;
                     }
