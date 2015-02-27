@@ -6,9 +6,20 @@ using Qiniu.Util;
 
 namespace Qiniu.Storage
 {
+    /// <summary>
+    /// 数据或者文件的表单上传方式
+    /// </summary>
     public class FormUploader
     {
-        //上传字节数据
+        /// <summary>
+        /// 以表单方式上传字节数据
+        /// </summary>
+        /// <param name="httpManager">HttpManager对象</param>
+        /// <param name="data">字节数据</param>
+        /// <param name="key">保存在七牛的文件名</param>
+        /// <param name="token">上传凭证</param>
+        /// <param name="uploadOptions">上传可选设置</param>
+        /// <param name="upCompletionHandler">上传完成结果处理器</param>
         public void uploadData(HttpManager httpManager, byte[] data, string key,
             string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
@@ -22,7 +33,15 @@ namespace Qiniu.Storage
             upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
 
-        //上传文件流
+        /// <summary>
+        /// 以表单方式上传数据流
+        /// </summary>
+        /// <param name="httpManager">HttpManager对象</param>
+        /// <param name="stream">文件数据流</param>
+        /// <param name="key">保存在七牛的文件名</param>
+        /// <param name="token">上传凭证</param>
+        /// <param name="uploadOptions">上传可选设置</param>
+        /// <param name="upCompletionHandler">上传完成结果处理器</param>
         public void uploadStream(HttpManager httpManager, Stream stream, string key, string token,
             UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
@@ -36,7 +55,15 @@ namespace Qiniu.Storage
             upload(httpManager, postArgs, key, token, uploadOptions, upCompletionHandler);
         }
 
-        //上传沙盒文件
+        /// <summary>
+        /// 上传沙盒文件
+        /// </summary>
+        /// <param name="httpManager">HttpManager对象</param>
+        /// <param name="filePath">沙盒文件的完整路径</param>
+        /// <param name="key">保存在七牛的文件名</param>
+        /// <param name="token">上传凭证</param>
+        /// <param name="uploadOptions">上传可选设置</param>
+        /// <param name="upCompletionHandler">上传完成结果处理器</param>
         public void uploadFile(HttpManager httpManager, string filePath, string key,
             string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {

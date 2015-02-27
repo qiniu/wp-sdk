@@ -11,6 +11,9 @@ using System.Text;
 
 namespace Qiniu.Storage
 {
+    /// <summary>
+    /// 文件分片上传
+    /// </summary>
     public class ResumeUploader
     {
         private HttpManager httpManager;
@@ -28,20 +31,17 @@ namespace Qiniu.Storage
         private Stream fileStream;
         private IsolatedStorageFile storage;
 
-        /**
-         * 
-         *  构建一个支持七牛分片上传的对象
-         * 
-         *  httpManager - 上传HttpManager
-         *  recorder    - 上传进度记录者
-         *  recordKey   - 上传进度保存文件名
-         *  filePath    - 上传文件的沙盒路径
-         *  key         - 上传文件保存在七牛的名字
-         *  token       - 上传凭证，从业务服务器获取
-         *  uploadOptions - 上传的可选设置项
-         *  upCompletionHandler - 上传结束处理类对象
-         *
-         */
+        /// <summary>
+        /// 构建分片上传对象
+        /// </summary>
+        /// <param name="httpManager">HttpManager对象</param>
+        /// <param name="recorder">分片上传进度记录器</param>
+        /// <param name="recordKey">分片上传进度记录文件名</param>
+        /// <param name="filePath">上传的沙盒文件全路径</param>
+        /// <param name="key">保存在七牛的文件名</param>
+        /// <param name="token">上传凭证</param>
+        /// <param name="uploadOptions">上传可选设置</param>
+        /// <param name="upCompletionHandler">上传完成结果处理器</param>
         public ResumeUploader(HttpManager httpManager, ResumeRecorder recorder, string recordKey, string filePath,
             string key, string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
@@ -158,6 +158,9 @@ namespace Qiniu.Storage
         }
         #endregion
 
+        /// <summary>
+        /// 分片方式上传文件
+        /// </summary>
         #region 上传文件
         public void uploadFile()
         {

@@ -9,6 +9,9 @@ using Newtonsoft.Json;
 using System.IO.IsolatedStorage;
 namespace Qiniu.Http
 {
+    /// <summary>
+    /// HTTP请求管理器，SDK通过该HttpManager发送各类HTTP请求
+    /// </summary>
     public class HttpManager
     {
         private HttpWebRequest webRequest;
@@ -30,12 +33,21 @@ namespace Qiniu.Http
         private MemoryStream postDataMemoryStream;
         private double duration;
         private DateTime startTime;
+
+        /// <summary>
+        /// 生成一个随机数
+        /// </summary>
+        /// <returns>随机数</returns>
         private string genId()
         {
             Random r = new Random();
             return System.DateTime.Now.Millisecond + "" + r.Next(999);
         }
 
+        /// <summary>
+        /// 生成HTTP UserAgent
+        /// </summary>
+        /// <returns>UserAgent</returns>
         private string getUserAgent()
         {
             return string.Format("QiniuWindowsPhone/{0} ({1}; {2}; {3}; {4}; {5})",
@@ -47,21 +59,29 @@ namespace Qiniu.Http
                 genId());
         }
 
+        /// <summary>
+        /// 创建一个默认的HttpManager对象
+        /// </summary>
         public HttpManager()
         {
             this.timeout = new TimeSpan(0, 0, 0, Config.TIMEOUT_INTERVAL);
-            this.FileContentType = PostContentType.STREAM;
             this.Headers = new WebHeaderCollection();
         }
 
+        /// <summary>
+        /// 设置Authorization头部信息
+        /// </summary>
+        /// <param name="upToken">上传凭证</param>
         public void setAuthHeader(string upToken)
         {
             this.Headers[HttpRequestHeader.Authorization] = upToken;
         }
 
-        /**
-         * 以POST方式发送form-urlencoded请求
-         */
+        /// <summary>
+        /// 发送格式为application/x-www-form-urlencoded的POST请求
+        /// 该请求的Body参数由PostArgs.Params来指定
+        /// </summary>
+        /// <param name="url">请求Url</param>
         public void post(string url)
         {
             this.webRequest = (HttpWebRequest)WebRequest.CreateHttp(url);
@@ -77,13 +97,14 @@ namespace Qiniu.Http
             {
                 this.webRequest.Headers[headerKey] = this.Headers[headerKey];
             }
-            //prepare data
+            //设置请求Body参数
             StringBuilder postParams = new StringBuilder();
             if (this.PostArgs != null && this.PostArgs.Params != null)
             {
                 foreach (KeyValuePair<string, string> kvp in this.PostArgs.Params)
                 {
-                    postParams.Append(HttpUtility.UrlEncode(kvp.Key)).Append("=").Append(HttpUtility.UrlEncode(kvp.Value)).Append("&");
+                    postParams.Append(HttpUtility.UrlEncode(kvp.Key)).Append("=")
+                        .Append(HttpUtility.UrlEncode(kvp.Value)).Append("&");
                 }
             }
             byte[] postData = new byte[0];
@@ -92,7 +113,7 @@ namespace Qiniu.Http
                 postData = Encoding.UTF8.GetBytes(postParams.ToString().Substring(0, postParams.Length - 1));
             }
             this.postDataMemoryStream = new MemoryStream(postData);
-            //set content length
+            //设置ContentLength头部
             this.webRequest.ContentLength = this.postDataMemoryStream.Length;
             this.webRequest.AllowWriteStreamBuffering = true;
             this.webRequest.AllowReadStreamBuffering = true;
@@ -101,6 +122,10 @@ namespace Qiniu.Http
             allDone.WaitOne(timeout);
         }
 
+        /// <summary>
+        /// 发送异步请求，并获取处理回复
+        /// </summary>
+        /// <param name="asyncResult">异步状态</param>
         private void firePostRequest(IAsyncResult asyncResult)
         {
             this.startTime = DateTime.Now;
@@ -116,9 +141,10 @@ namespace Qiniu.Http
             request.BeginGetResponse(new AsyncCallback(handleResponse), request);
         }
 
-        /**
-         * 传输二进制数据，用在分片上传中 
-         */
+        /// <summary>
+        /// 发送格式为application/octet-stream的POST请求，主要用于分片上传中发送二进制数据
+        /// </summary>
+        /// <param name="url">请求Url</param>
         public void postData(string url)
         {
             this.webRequest = (HttpWebRequest)WebRequest.CreateHttp(url);
@@ -139,6 +165,10 @@ namespace Qiniu.Http
             allDone.WaitOne(timeout);
         }
 
+        /// <summary>
+        /// 发送异步请求，并获取处理回复
+        /// </summary>
+        /// <param name="asyncResult">异步状态</param>
         private void firePostDataRequest(IAsyncResult asyncResult)
         {
             this.startTime = DateTime.Now;
@@ -154,7 +184,7 @@ namespace Qiniu.Http
             }
             for (int i = 0; i < writeTimes; i++)
             {
-                //check cancellation signal
+                //检查取消信号
                 if (CancellationSignal != null && CancellationSignal())
                 {
                     if (CompletionHandler != null)
@@ -172,6 +202,7 @@ namespace Qiniu.Http
                 }
                 postDataStream.Write(this.PostArgs.Data, offset, size);
                 bytesWritten += size;
+                //请求进度处理
                 if (ProgressHandler != null)
                 {
                     ProgressHandler(bytesWritten, totalBytes);
@@ -182,9 +213,10 @@ namespace Qiniu.Http
             request.BeginGetResponse(new AsyncCallback(handleResponse), request);
         }
 
-        /**
-         * 以POST方式发送multipart/form-data格式数据
-         */
+        /// <summary>
+        /// 发送格式为multipart/form-data的POST请求
+        /// </summary>
+        /// <param name="url">请求Url</param>
         public void multipartPost(string url)
         {
             this.webRequest = (HttpWebRequest)WebRequest.CreateHttp(url);
@@ -192,22 +224,21 @@ namespace Qiniu.Http
             this.webRequest.AllowAutoRedirect = false;
             this.webRequest.Method = "POST";
             this.webRequest.ContentType = string.Format("{0}; boundary={1}", APPLICATION_MULTIPART_FORM, MULTIPART_BOUNDARY);
-            //prepare data
+            //准备数据
             this.postDataMemoryStream = new MemoryStream();
-            //write params
             byte[] boundarySepTag = Encoding.UTF8.GetBytes(MULTIPART_BOUNDARY_SEP_TAG);
             byte[] boundaryData = Encoding.UTF8.GetBytes(MULTIPART_BOUNDARY);
             byte[] multiPartSepLineData = Encoding.UTF8.GetBytes(MULTIPART_SEP_LINE);
-
+            //写入参数
             if (this.PostArgs != null && this.PostArgs.Params != null)
             {
                 foreach (KeyValuePair<string, string> kvp in this.PostArgs.Params)
                 {
-                    //write boundary start
+                    //写入boundary起始标记
                     postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
-                    //write boundary
+                    //写入boundary
                     postDataMemoryStream.Write(boundaryData, 0, boundaryData.Length);
-                    //wrtie header and content
+                    //写入头部和数据
                     postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
                     byte[] contentHeaderData = Encoding.UTF8.GetBytes(
                         string.Format("Content-Disposition: form-data; name=\"{0}\"", kvp.Key));
@@ -219,7 +250,7 @@ namespace Qiniu.Http
                     postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
                 }
             }
-            //write filename and mimetype header
+            //写入文件名词和MimeType
             postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
             postDataMemoryStream.Write(boundaryData, 0, boundaryData.Length);
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
@@ -241,7 +272,7 @@ namespace Qiniu.Http
             postDataMemoryStream.Write(fileContentTypeData, 0, fileContentTypeData.Length);
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
-            //write file data
+            //写入文件数据
             if (FileContentType == PostContentType.BYTES)
             {
                 postDataMemoryStream.Write(this.PostArgs.Data, 0, this.PostArgs.Data.Length);
@@ -291,12 +322,13 @@ namespace Qiniu.Http
                 }
             }
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
-            //write last boundary
+            //写入boundary结束标记
             postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
             postDataMemoryStream.Write(boundaryData, 0, boundaryData.Length);
             postDataMemoryStream.Write(boundarySepTag, 0, boundarySepTag.Length);
             postDataMemoryStream.Write(multiPartSepLineData, 0, multiPartSepLineData.Length);
             postDataMemoryStream.Flush();
+            //设置ContentLength
             this.webRequest.ContentLength = postDataMemoryStream.Length;
             if (this.webRequest.Headers == null)
             {
@@ -310,12 +342,16 @@ namespace Qiniu.Http
             allDone.WaitOne(timeout);
         }
 
+        /// <summary>
+        /// 发送异步请求，并获取处理回复
+        /// </summary>
+        /// <param name="asyncResult">异步状态</param>
         private void fireMultipartPostRequest(IAsyncResult asyncResult)
         {
             this.startTime = DateTime.Now;
             HttpWebRequest request = (HttpWebRequest)asyncResult.AsyncState;
             Stream postDataStream = request.EndGetRequestStream(asyncResult);
-            //write to post data stream
+
             int bytesWritten = 0;
             int totalBytes = (int)postDataMemoryStream.Length;
             int writeTimes = totalBytes / BUFFER_SIZE;
@@ -323,13 +359,12 @@ namespace Qiniu.Http
             {
                 writeTimes += 1;
             }
-            //reset to begin to read
             postDataMemoryStream.Seek(0, SeekOrigin.Begin);
             int memNumRead = 0;
             byte[] memBuffer = new byte[BUFFER_SIZE];
             while ((memNumRead = postDataMemoryStream.Read(memBuffer, 0, memBuffer.Length)) != 0)
             {
-                //check cancellation signal
+                //检查取消信号
                 if (this.CancellationSignal != null && this.CancellationSignal())
                 {
                     if (this.CompletionHandler != null)
@@ -341,18 +376,22 @@ namespace Qiniu.Http
                 }
                 postDataStream.Write(memBuffer, 0, memNumRead);
                 bytesWritten += memNumRead;
+                //处理进度
                 if (ProgressHandler != null)
                 {
                     ProgressHandler(bytesWritten, totalBytes);
                 }
             }
-            //flush and close
             postDataMemoryStream.Close();
             postDataStream.Flush();
             postDataStream.Close();
             request.BeginGetResponse(new AsyncCallback(handleResponse), request);
         }
 
+        /// <summary>
+        /// 处理Http请求结果
+        /// </summary>
+        /// <param name="asyncResult">异步状态</param>
         private void handleResponse(IAsyncResult asyncResult)
         {
             HttpWebRequest request = (HttpWebRequest)asyncResult.AsyncState;

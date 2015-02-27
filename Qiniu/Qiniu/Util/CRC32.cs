@@ -4,6 +4,9 @@ using System.IO.IsolatedStorage;
 
 namespace Qiniu.Util
 {
+    /// <summary>
+    /// CRC32计算器
+    /// </summary>
     public class CRC32
     {
         public const UInt32 IEEE = 0xedb88320;
@@ -54,6 +57,12 @@ namespace Qiniu.Util
             return ~crc;
         }
 
+        /// <summary>
+        /// 计算字节数据的crc32值
+        /// </summary>
+        /// <param name="data">二进制数据</param>
+        /// <param name="length">长度</param>
+        /// <returns>crc32值</returns>
         public static UInt32 CheckSumBytes(byte[] data, int length)
         {
             CRC32 crc = new CRC32();
@@ -61,6 +70,11 @@ namespace Qiniu.Util
             return crc.Sum32();
         }
 
+        /// <summary>
+        /// 计算沙盒文件的crc32值
+        /// </summary>
+        /// <param name="filePath">沙盒文件全路径</param>
+        /// <returns>crc32值</returns>
         public static UInt32 CheckSumFile(string filePath)
         {
             CRC32 crc = new CRC32();

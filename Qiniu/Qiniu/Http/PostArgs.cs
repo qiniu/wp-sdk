@@ -3,10 +3,10 @@ using System.IO;
 
 namespace Qiniu.Http
 {
-    /**
-     * 定义multipart/form-data的请求参数
-     * 其中Data, Stream, File只能设置一个
-     */
+    /// <summary>
+    /// 定义multipart/form-data的请求参数
+    /// 其中Data, Stream, File只能设置一个
+    /// </summary>
     public class PostArgs
     {
         //上传的数据

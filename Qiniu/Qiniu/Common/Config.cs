@@ -1,6 +1,9 @@
 ﻿
 namespace Qiniu.Common
 {
+    /// <summary>
+    /// 配置信息
+    /// </summary>
     public class Config
     {
         //SDK的版本号
