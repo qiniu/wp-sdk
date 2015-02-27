@@ -96,7 +96,20 @@ namespace Qiniu.Storage
         public void uploadStream(Stream stream, string key, string token,
             UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
         {
-            new FormUploader().uploadStream(this.httpManager, stream, key, token, uploadOptions, upCompletionHandler);
+            long fileSize = stream.Length;
+            if (fileSize <= Config.PUT_THRESHOLD)
+            {
+                new FormUploader().uploadStream(this.httpManager, stream, key, token, uploadOptions, upCompletionHandler);
+            }
+            else
+            {
+                string recorderKey = null;
+                if (this.keyGenerator != null)
+                {
+                    recorderKey = this.keyGenerator();
+                }
+                new ResumeUploader(this.httpManager, this.resumeRecorder, recorderKey, stream, key, token, uploadOptions, upCompletionHandler).uploadStream();
+            }
         }
         #endregion
 

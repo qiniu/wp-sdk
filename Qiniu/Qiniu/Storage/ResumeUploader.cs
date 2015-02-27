@@ -71,6 +71,35 @@ namespace Qiniu.Storage
             this.chunkBuffer = new byte[Config.CHUNK_SIZE];
         }
 
+        public ResumeUploader(HttpManager httpManager, ResumeRecorder recorder, string recordKey, Stream stream,
+            string key, string token, UploadOptions uploadOptions, UpCompletionHandler upCompletionHandler)
+        {
+            this.httpManager = httpManager;
+            this.resumeRecorder = recorder;
+            this.recordKey = recordKey;
+            this.fileStream = stream;
+            this.key = key;
+            this.storage = IsolatedStorageFile.GetUserStoreForApplication();
+            this.uploadOptions = (uploadOptions == null) ? UploadOptions.defaultOptions() : uploadOptions;
+            this.upCompletionHandler = new UpCompletionHandler(delegate(string fileKey, ResponseInfo respInfo, string response)
+            {
+                if (this.fileStream != null)
+                {
+                    try
+                    {
+                        this.fileStream.Close();
+                    }
+                    catch (Exception) { }
+                }
+                if (upCompletionHandler != null)
+                {
+                    upCompletionHandler(key, respInfo, response);
+                }
+            });
+            this.httpManager.setAuthHeader("UpToken " + token);
+            this.chunkBuffer = new byte[Config.CHUNK_SIZE];
+        }
+
         #region 发送mkblk请求
         private void makeBlock(string upHost, long offset, int blockSize, int chunkSize,
             ProgressHandler progressHandler, CompletionHandler completionHandler)
@@ -165,6 +194,30 @@ namespace Qiniu.Storage
             {
                 this.fileStream = this.storage.OpenFile(this.filePath, FileMode.Open, FileAccess.Read);
                 this.lastModifyTime = this.storage.GetLastWriteTime(this.filePath).ToFileTime();
+                this.size = this.fileStream.Length;
+                long blockCount = (this.size % Config.BLOCK_SIZE == 0) ? (this.size / Config.BLOCK_SIZE) : (this.size / Config.BLOCK_SIZE + 1);
+                this.contexts = new string[blockCount];
+            }
+            catch (Exception ex)
+            {
+                this.upCompletionHandler(this.key, ResponseInfo.fileError(ex), "");
+                return;
+            }
+
+            long offset = recoveryFromResumeRecord();
+            this.nextTask(offset, 0, Config.UPLOAD_HOST);
+        }
+        #endregion
+
+        /// <summary>
+        /// 分片方式上传文件流
+        /// </summary>
+        #region 上传文件流
+        public void uploadStream()
+        {
+            try
+            {
+                this.lastModifyTime = DateTime.Now.ToFileTime();
                 this.size = this.fileStream.Length;
                 long blockCount = (this.size % Config.BLOCK_SIZE == 0) ? (this.size / Config.BLOCK_SIZE) : (this.size / Config.BLOCK_SIZE + 1);
                 this.contexts = new string[blockCount];
