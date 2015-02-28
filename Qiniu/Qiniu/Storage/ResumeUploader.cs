@@ -64,7 +64,7 @@ namespace Qiniu.Storage
                     }
                     catch (Exception) { }
                 }
-                
+
                 if (upCompletionHandler != null)
                 {
                     upCompletionHandler(key, respInfo, response);
@@ -112,7 +112,6 @@ namespace Qiniu.Storage
             string url = string.Format("{0}/mkblk/{1}", upHost, blockSize);
             try
             {
-                this.fileStream.Seek(offset, SeekOrigin.Begin);
                 this.fileStream.Read(this.chunkBuffer, 0, chunkSize);
             }
             catch (Exception ex)
@@ -133,7 +132,6 @@ namespace Qiniu.Storage
             string url = string.Format("{0}/bput/{1}/{2}", upHost, context, chunkOffset);
             try
             {
-                this.fileStream.Seek(offset, SeekOrigin.Begin);
                 this.fileStream.Read(this.chunkBuffer, 0, chunkSize);
             }
             catch (Exception ex)
@@ -222,6 +220,7 @@ namespace Qiniu.Storage
         {
             try
             {
+                this.fileStream.Seek(0, SeekOrigin.Begin);
                 this.lastModifyTime = DateTime.Now.ToFileTime();
                 this.size = this.fileStream.Length;
                 long blockCount = (this.size % Config.BLOCK_SIZE == 0) ? (this.size / Config.BLOCK_SIZE) : (this.size / Config.BLOCK_SIZE + 1);
