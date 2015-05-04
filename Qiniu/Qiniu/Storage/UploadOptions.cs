@@ -26,12 +26,11 @@ namespace Qiniu.Storage
         {
             get
             {
-                this.extraParams = filterParams(extraParams);
-                return this.extraParams;
+                return filterParams(extraParams);
             }
             set
             {
-                this.extraParams = filterParams(extraParams);
+                this.extraParams = value;
             }
         }
 
